@@ -1,0 +1,303 @@
+package com.olineshop.controller;
+
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import com.olineshop.dao.OrderDAO;
+import com.olineshop.dao.ProductDAO;
+import com.olineshop.dao.UserDAO;
+import com.olineshop.model.Order;
+import com.olineshop.model.OrderItem;
+import com.olineshop.model.Product;
+import com.olineshop.model.User;
+import com.olineshop.view.LoginView;
+import com.olineshop.view.MainClientView;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Контроллер для клиентской части приложения
+ */
+public class ClientController {
+    private final MainClientView view;
+    private final Stage primaryStage;
+    private final User currentUser;
+    
+    private final ProductDAO productDAO;
+    private final OrderDAO orderDAO;
+    private final UserDAO userDAO;
+    
+    private final ObservableList<Product> products;
+    private final ObservableList<OrderItem> cartItems;
+    private final ObservableList<Order> orders;
+    
+    /**
+     * Конструктор контроллера
+     * 
+     * @param view представление клиентской части
+     * @param primaryStage главное окно приложения
+     * @param currentUser текущий пользователь
+     */
+    public ClientController(MainClientView view, Stage primaryStage, User currentUser) {
+        this.view = view;
+        this.primaryStage = primaryStage;
+        this.currentUser = currentUser;
+        
+        this.productDAO = new ProductDAO();
+        this.orderDAO = new OrderDAO();
+        this.userDAO = new UserDAO();
+        
+        this.products = FXCollections.observableArrayList();
+        this.cartItems = FXCollections.observableArrayList();
+        this.orders = FXCollections.observableArrayList();
+    }
+
+    /**
+     * Загрузить список товаров
+     */
+    public void loadProducts() {
+        products.clear();
+        products.addAll(productDAO.getAllProducts());
+        view.updateProductTable(products);
+    }
+
+    /**
+     * Загрузить историю заказов пользователя
+     */
+    public void loadOrderHistory() {
+        orders.clear();
+        orders.addAll(orderDAO.getOrdersByUser(currentUser.getId()));
+        view.updateOrderHistoryTable(orders);
+    }
+
+    /**
+     * Добавить товар в корзину
+     * 
+     * @param product товар для добавления
+     * @param quantity количество товара
+     */
+    public void addToCart(Product product, int quantity) {
+        // Проверяем, достаточно ли товара на складе
+        if (product.getStockQuantity() < quantity) {
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Недостаточно товара на складе");
+            return;
+        }
+        
+        // Проверяем, есть ли уже такой товар в корзине
+        for (OrderItem item : cartItems) {
+            if (item.getProduct().getId() == product.getId()) {
+                // Товар уже есть в корзине, увеличиваем количество
+                int newQuantity = item.getQuantity() + quantity;
+                
+                // Проверяем, достаточно ли товара на складе
+                if (product.getStockQuantity() < newQuantity) {
+                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Недостаточно товара на складе");
+                    return;
+                }
+                
+                item.setQuantity(newQuantity);
+                updateCartView();
+                return;
+            }
+        }
+        
+        // Товара нет в корзине, добавляем новый
+        OrderItem newItem = new OrderItem();
+        newItem.setProduct(product);
+        newItem.setQuantity(quantity);
+        newItem.setPrice(product.getPrice());
+        
+        cartItems.add(newItem);
+        updateCartView();
+    }
+
+    /**
+     * Удалить товар из корзины
+     * 
+     * @param item товар для удаления
+     */
+    public void removeFromCart(OrderItem item) {
+        cartItems.remove(item);
+        updateCartView();
+    }
+
+    /**
+     * Обновить представление корзины
+     */
+    private void updateCartView() {
+        double totalPrice = calculateTotalPrice();
+        view.updateCartTable(cartItems, totalPrice);
+    }
+
+    /**
+     * Рассчитать общую стоимость товаров в корзине
+     * 
+     * @return общая стоимость товаров в корзине
+     */
+    private double calculateTotalPrice() {
+        double total = 0.0;
+        
+        for (OrderItem item : cartItems) {
+            total += item.getPrice() * item.getQuantity();
+        }
+        
+        // Применяем скидку пользователя
+        total = total * (1 - currentUser.getDiscount());
+        
+        // Применяем дополнительную скидку в зависимости от суммы заказа
+        if (total > 5000) {
+            // Если сумма заказа больше 5000 руб., применяем дополнительную скидку 5%
+            total = total * 0.95;
+        }
+        
+        return total;
+    }
+
+    /**
+     * Оформить заказ
+     */
+    public void checkout() {
+        if (cartItems.isEmpty()) {
+            view.showAlert(Alert.AlertType.WARNING, "Предупреждение", "Корзина пуста");
+            return;
+        }
+        
+        // Создаем новый заказ
+        Order order = new Order();
+        order.setUser(currentUser);
+        order.setOrderDate(LocalDateTime.now());
+        order.setTotalCost(calculateTotalPrice());
+        order.setStatus("В обработке");
+        
+        // Добавляем товары в заказ
+        List<OrderItem> items = new ArrayList<>(cartItems);
+        for (OrderItem item : items) {
+            item.setOrder(order);
+        }
+        
+        order.setItems(items);
+        
+        // Сохраняем заказ в базе данных
+        boolean success = orderDAO.addOrder(order);
+        
+        if (success) {
+            // Проверяем, нужно ли обновить скидку пользователя
+            if (order.getTotalCost() > 5000 && currentUser.getDiscount() == 0) {
+                // Пользователь становится "постоянным клиентом" и получает скидку 2%
+                currentUser.setDiscount(0.02);
+                userDAO.updateUser(currentUser);
+            }
+            
+            view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Заказ успешно оформлен");
+            
+            // Очищаем корзину
+            cartItems.clear();
+            updateCartView();
+            
+            // Обновляем историю заказов
+            loadOrderHistory();
+        } else {
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось оформить заказ");
+        }
+    }
+
+    /**
+     * Показать подробности заказа
+     * 
+     * @param order заказ для просмотра
+     */
+    public void showOrderDetails(Order order) {
+        // Создаем новое окно для отображения подробностей заказа
+        Stage detailsStage = new Stage();
+        detailsStage.setTitle("Подробности заказа №" + order.getId());
+        detailsStage.initModality(Modality.WINDOW_MODAL);
+        detailsStage.initOwner(primaryStage);
+        
+        VBox vbox = new VBox(10);
+        vbox.setPadding(new Insets(10, 10, 10, 10));
+        
+        // Информация о заказе
+        GridPane infoGrid = new GridPane();
+        infoGrid.setHgap(10);
+        infoGrid.setVgap(10);
+        infoGrid.setPadding(new Insets(0, 0, 10, 0));
+        
+        infoGrid.add(new Label("Номер заказа:"), 0, 0);
+        infoGrid.add(new Label(String.valueOf(order.getId())), 1, 0);
+        
+        infoGrid.add(new Label("Дата заказа:"), 0, 1);
+        infoGrid.add(new Label(order.getOrderDate().toString()), 1, 1);
+        
+        infoGrid.add(new Label("Дата доставки:"), 0, 2);
+        infoGrid.add(new Label(order.getDeliveryDate() != null ? order.getDeliveryDate().toString() : "Не указана"), 1, 2);
+        
+        infoGrid.add(new Label("Статус:"), 0, 3);
+        infoGrid.add(new Label(order.getStatus()), 1, 3);
+        
+        infoGrid.add(new Label("Итоговая стоимость:"), 0, 4);
+        infoGrid.add(new Label(String.format("%.2f руб.", order.getTotalCost())), 1, 4);
+        
+        // Таблица товаров в заказе
+        TableView<OrderItem> itemsTable = new TableView<>();
+        
+        // Столбец с названием товара
+        TableColumn<OrderItem, String> nameColumn = new TableColumn<>("Название");
+        nameColumn.setCellValueFactory(cellData -> {
+            return new javafx.beans.property.SimpleStringProperty(
+                    cellData.getValue().getProduct().getName());
+        });
+        nameColumn.setPrefWidth(200);
+        
+        // Столбец с ценой товара
+        TableColumn<OrderItem, Double> priceColumn = new TableColumn<>("Цена (руб.)");
+        priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
+        
+        // Столбец с количеством товара
+        TableColumn<OrderItem, Integer> quantityColumn = new TableColumn<>("Количество");
+        quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        
+        // Столбец с суммой
+        TableColumn<OrderItem, Double> subtotalColumn = new TableColumn<>("Сумма (руб.)");
+        subtotalColumn.setCellValueFactory(cellData -> {
+            double subtotal = cellData.getValue().getPrice() * cellData.getValue().getQuantity();
+            return new javafx.beans.property.SimpleDoubleProperty(subtotal).asObject();
+        });
+        
+        // Добавляем столбцы в таблицу
+        itemsTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, subtotalColumn);
+        
+        // Заполняем таблицу данными
+        itemsTable.setItems(FXCollections.observableArrayList(order.getItems()));
+        
+        // Кнопка "Закрыть"
+        Button closeButton = new Button("Закрыть");
+        closeButton.setOnAction(e -> detailsStage.close());
+        
+        vbox.getChildren().addAll(infoGrid, new Label("Товары в заказе:"), itemsTable, closeButton);
+        
+        Scene scene = new Scene(vbox, 600, 400);
+        detailsStage.setScene(scene);
+        detailsStage.show();
+    }
+
+    /**
+     * Обработать выход из системы
+     */
+    public void handleLogout() {
+        // Закрываем главное окно
+        primaryStage.close();
+        
+        // Открываем окно входа
+        LoginView loginView = new LoginView();
+        loginView.start(new Stage());
+    }
+} 
