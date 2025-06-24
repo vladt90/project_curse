@@ -8,7 +8,7 @@ import java.sql.SQLException;
  * Класс для управления соединением с базой данных (Singleton)
  */
 public class DatabaseManager {
-    private static final String URL = "jdbc:mysql://localhost:3306/online_store_db";
+    private static final String URL = "jdbc:mysql://localhost:8080/online_store_db";
     private static final String USER = "root"; // Ваш пользователь
     private static final String PASSWORD = ""; // Ваш пароль
 

@@ -61,6 +61,58 @@ public class ProductDAO {
     }
 
     /**
+     * Найти товары по названию (поиск по части названия, без учета регистра)
+     * 
+     * @param searchTerm строка для поиска
+     * @return список найденных товаров
+     */
+    public List<Product> searchProductsByName(String searchTerm) {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT * FROM products WHERE LOWER(name) LIKE ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, "%" + searchTerm.toLowerCase() + "%");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(extractProductFromResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return products;
+    }
+
+    /**
+     * Фильтровать товары по диапазону цен
+     * 
+     * @param minPrice минимальная цена (включительно)
+     * @param maxPrice максимальная цена (включительно)
+     * @return список товаров в указанном диапазоне цен
+     */
+    public List<Product> filterProductsByPrice(double minPrice, double maxPrice) {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT * FROM products WHERE price >= ? AND price <= ?";
+
+        try (Connection conn = DatabaseManager.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDouble(1, minPrice);
+            pstmt.setDouble(2, maxPrice);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(extractProductFromResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return products;
+    }
+
+    /**
      * Получить товар по идентификатору
      * 
      * @param id идентификатор товара

@@ -130,6 +130,57 @@ public class MainClientView {
         Text title = new Text("Доступные товары");
         title.setFont(Font.font("Tahoma", FontWeight.NORMAL, 16));
         
+        // Панель поиска и фильтрации
+        HBox searchPanel = new HBox(10);
+        searchPanel.setPadding(new Insets(0, 0, 10, 0));
+        
+        // Поиск по названию
+        Label searchLabel = new Label("Поиск:");
+        TextField searchField = new TextField();
+        searchField.setPrefWidth(200);
+        Button searchButton = new Button("Найти");
+        searchButton.setOnAction(e -> controller.searchProducts(searchField.getText()));
+        
+        // Фильтр по цене
+        Label priceLabel = new Label("Цена от:");
+        TextField minPriceField = new TextField();
+        minPriceField.setPrefWidth(80);
+        Label toLabel = new Label("до:");
+        TextField maxPriceField = new TextField();
+        maxPriceField.setPrefWidth(80);
+        Button filterButton = new Button("Применить");
+        filterButton.setOnAction(e -> {
+            try {
+                double minPrice = minPriceField.getText().isEmpty() ? 0 : Double.parseDouble(minPriceField.getText());
+                double maxPrice = maxPriceField.getText().isEmpty() ? Double.MAX_VALUE : Double.parseDouble(maxPriceField.getText());
+                
+                if (minPrice < 0 || maxPrice < 0) {
+                    showAlert(Alert.AlertType.ERROR, "Ошибка", "Цена не может быть отрицательной");
+                    return;
+                }
+                
+                if (minPrice > maxPrice) {
+                    showAlert(Alert.AlertType.ERROR, "Ошибка", "Минимальная цена не может быть больше максимальной");
+                    return;
+                }
+                
+                controller.filterProductsByPrice(minPrice, maxPrice);
+            } catch (NumberFormatException ex) {
+                showAlert(Alert.AlertType.ERROR, "Ошибка", "Некорректный формат числа");
+            }
+        });
+        
+        // Кнопка сброса фильтров
+        Button resetButton = new Button("Сбросить");
+        resetButton.setOnAction(e -> {
+            searchField.clear();
+            minPriceField.clear();
+            maxPriceField.clear();
+            controller.loadProducts();
+        });
+        
+        searchPanel.getChildren().addAll(searchLabel, searchField, searchButton, priceLabel, minPriceField, toLabel, maxPriceField, filterButton, resetButton);
+        
         // Создаем таблицу товаров
         productTable = new TableView<>();
         
@@ -179,7 +230,7 @@ public class MainClientView {
         
         buttonPanel.getChildren().addAll(quantityLabel, quantitySpinner, addToCartButton);
         
-        vbox.getChildren().addAll(title, productTable, buttonPanel);
+        vbox.getChildren().addAll(title, searchPanel, productTable, buttonPanel);
         
         return vbox;
     }
@@ -217,7 +268,10 @@ public class MainClientView {
         
         // Столбец с суммой
         TableColumn<OrderItem, Double> subtotalColumn = new TableColumn<>("Сумма (руб.)");
-        subtotalColumn.setCellValueFactory(new PropertyValueFactory<>("subtotal"));
+        subtotalColumn.setCellValueFactory(cellData -> {
+            double subtotal = cellData.getValue().getPrice() * cellData.getValue().getQuantity();
+            return new javafx.beans.property.SimpleDoubleProperty(subtotal).asObject();
+        });
         
         // Добавляем столбцы в таблицу
         cartTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, subtotalColumn);
@@ -241,7 +295,7 @@ public class MainClientView {
         
         // Кнопка "Оформить заказ"
         Button checkoutButton = new Button("Оформить заказ");
-        checkoutButton.setOnAction(e -> controller.checkout());
+        checkoutButton.setOnAction(e -> controller.showOrderConfirmationDialog());
         
         bottomPanel.getChildren().addAll(totalPriceLabel, removeFromCartButton, checkoutButton);
         

@@ -69,6 +69,35 @@ public class ClientController {
         products.addAll(productDAO.getAllProducts());
         view.updateProductTable(products);
     }
+    
+    /**
+     * Поиск товаров по названию
+     * 
+     * @param searchTerm строка для поиска
+     */
+    public void searchProducts(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            // Если строка поиска пуста, показываем все товары
+            loadProducts();
+            return;
+        }
+        
+        products.clear();
+        products.addAll(productDAO.searchProductsByName(searchTerm));
+        view.updateProductTable(products);
+    }
+    
+    /**
+     * Фильтрация товаров по цене
+     * 
+     * @param minPrice минимальная цена
+     * @param maxPrice максимальная цена
+     */
+    public void filterProductsByPrice(double minPrice, double maxPrice) {
+        products.clear();
+        products.addAll(productDAO.filterProductsByPrice(minPrice, maxPrice));
+        view.updateProductTable(products);
+    }
 
     /**
      * Загрузить историю заказов пользователя
@@ -160,6 +189,102 @@ public class ClientController {
         }
         
         return total;
+    }
+    
+    /**
+     * Показать диалог подтверждения заказа
+     */
+    public void showOrderConfirmationDialog() {
+        if (cartItems.isEmpty()) {
+            view.showAlert(Alert.AlertType.WARNING, "Предупреждение", "Корзина пуста");
+            return;
+        }
+        
+        // Создаем новое окно для подтверждения заказа
+        Stage confirmStage = new Stage();
+        confirmStage.setTitle("Подтверждение заказа");
+        confirmStage.initModality(Modality.WINDOW_MODAL);
+        confirmStage.initOwner(primaryStage);
+        
+        VBox vbox = new VBox(10);
+        vbox.setPadding(new Insets(10, 10, 10, 10));
+        
+        // Информация о заказе
+        Label titleLabel = new Label("Подтверждение заказа");
+        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        
+        // Таблица товаров в заказе
+        TableView<OrderItem> itemsTable = new TableView<>();
+        
+        // Столбец с названием товара
+        TableColumn<OrderItem, String> nameColumn = new TableColumn<>("Название");
+        nameColumn.setCellValueFactory(cellData -> {
+            return new javafx.beans.property.SimpleStringProperty(
+                    cellData.getValue().getProduct().getName());
+        });
+        nameColumn.setPrefWidth(200);
+        
+        // Столбец с ценой товара
+        TableColumn<OrderItem, Double> priceColumn = new TableColumn<>("Цена (руб.)");
+        priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
+        
+        // Столбец с количеством товара
+        TableColumn<OrderItem, Integer> quantityColumn = new TableColumn<>("Количество");
+        quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        
+        // Столбец с суммой
+        TableColumn<OrderItem, Double> subtotalColumn = new TableColumn<>("Сумма (руб.)");
+        subtotalColumn.setCellValueFactory(cellData -> {
+            double subtotal = cellData.getValue().getPrice() * cellData.getValue().getQuantity();
+            return new javafx.beans.property.SimpleDoubleProperty(subtotal).asObject();
+        });
+        
+        // Добавляем столбцы в таблицу
+        itemsTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, subtotalColumn);
+        
+        // Заполняем таблицу данными
+        itemsTable.setItems(FXCollections.observableArrayList(cartItems));
+        
+        // Информация о скидке и итоговой сумме
+        double totalPrice = calculateTotalPrice();
+        double originalPrice = 0.0;
+        for (OrderItem item : cartItems) {
+            originalPrice += item.getPrice() * item.getQuantity();
+        }
+        
+        Label discountLabel = new Label(String.format("Скидка: %.2f%%", currentUser.getDiscount() * 100));
+        Label additionalDiscountLabel = new Label();
+        if (originalPrice > 5000) {
+            additionalDiscountLabel.setText("Дополнительная скидка за заказ от 5000 руб.: 5%");
+        } else {
+            additionalDiscountLabel.setText("Для получения дополнительной скидки 5% сумма заказа должна быть более 5000 руб.");
+        }
+        
+        Label totalLabel = new Label(String.format("Итоговая сумма: %.2f руб.", totalPrice));
+        totalLabel.setStyle("-fx-font-weight: bold;");
+        
+        // Кнопки
+        Button confirmButton = new Button("Подтвердить заказ");
+        confirmButton.setOnAction(e -> {
+            checkout();
+            confirmStage.close();
+        });
+        
+        Button cancelButton = new Button("Отмена");
+        cancelButton.setOnAction(e -> confirmStage.close());
+        
+        vbox.getChildren().addAll(
+                titleLabel, 
+                itemsTable, 
+                discountLabel, 
+                additionalDiscountLabel, 
+                totalLabel, 
+                new javafx.scene.layout.HBox(10, confirmButton, cancelButton)
+        );
+        
+        Scene scene = new Scene(vbox, 600, 400);
+        confirmStage.setScene(scene);
+        confirmStage.show();
     }
 
     /**
