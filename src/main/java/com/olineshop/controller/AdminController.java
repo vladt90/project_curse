@@ -24,9 +24,7 @@ import com.olineshop.view.MainAdminView;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-/**
- * Контроллер для административной части приложения
- */
+
 public class AdminController {
     private final MainAdminView view;
     private final Stage primaryStage;
@@ -39,12 +37,8 @@ public class AdminController {
     private final ObservableList<User> users;
     private final ObservableList<Order> orders;
     
-    /**
-     * Конструктор контроллера
-     * 
-     * @param view представление административной части
-     * @param primaryStage главное окно приложения
-     */
+
+
     public AdminController(MainAdminView view, Stage primaryStage) {
         this.view = view;
         this.primaryStage = primaryStage;
@@ -58,43 +52,25 @@ public class AdminController {
         this.orders = FXCollections.observableArrayList();
     }
 
-    /**
-     * Загрузить список товаров
-     */
     public void loadProducts() {
         products.clear();
         products.addAll(productDAO.getAllProducts());
         view.updateProductTable(products);
     }
 
-    /**
-     * Загрузить список пользователей
-     */
     public void loadUsers() {
         users.clear();
         users.addAll(userDAO.getAllUsers());
         view.updateUserTable(users);
     }
 
-    /**
-     * Загрузить список заказов
-     */
     public void loadOrders() {
         orders.clear();
         orders.addAll(orderDAO.getAllOrders());
         view.updateOrderTable(orders);
     }
 
-    /**
-     * Добавить новый товар
-     * 
-     * @param name название товара
-     * @param price цена товара
-     * @param unit единица измерения
-     * @param quantity количество на складе
-     */
     public void addProduct(String name, double price, String unit, int quantity) {
-        // Проверяем, что поля не пустые
         if (name == null || name.trim().isEmpty()) {
             view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Введите название товара");
             return;
@@ -105,7 +81,6 @@ public class AdminController {
             return;
         }
         
-        // Проверяем, что цена и количество положительные
         if (price <= 0) {
             view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Цена должна быть положительной");
             return;
@@ -116,14 +91,12 @@ public class AdminController {
             return;
         }
         
-        // Создаем новый товар
         Product product = new Product();
         product.setName(name);
         product.setPrice(price);
         product.setUnit(unit);
         product.setStockQuantity(quantity);
         
-        // Добавляем товар в базу данных
         boolean success = productDAO.addProduct(product);
         
         if (success) {
@@ -134,17 +107,7 @@ public class AdminController {
         }
     }
 
-    /**
-     * Обновить существующий товар
-     * 
-     * @param id идентификатор товара
-     * @param name новое название товара
-     * @param price новая цена товара
-     * @param unit новая единица измерения
-     * @param quantity новое количество на складе
-     */
     public void updateProduct(int id, String name, double price, String unit, int quantity) {
-        // Проверяем, что поля не пустые
         if (name == null || name.trim().isEmpty()) {
             view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Введите название товара");
             return;
@@ -155,7 +118,6 @@ public class AdminController {
             return;
         }
         
-        // Проверяем, что цена и количество положительные
         if (price <= 0) {
             view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Цена должна быть положительной");
             return;
@@ -166,7 +128,6 @@ public class AdminController {
             return;
         }
         
-        // Получаем товар из базы данных
         Product product = productDAO.getProductById(id);
         
         if (product == null) {
@@ -174,13 +135,11 @@ public class AdminController {
             return;
         }
         
-        // Обновляем данные товара
         product.setName(name);
         product.setPrice(price);
         product.setUnit(unit);
         product.setStockQuantity(quantity);
         
-        // Обновляем товар в базе данных
         boolean success = productDAO.updateProduct(product);
         
         if (success) {
@@ -191,13 +150,7 @@ public class AdminController {
         }
     }
 
-    /**
-     * Удалить товар
-     * 
-     * @param id идентификатор товара для удаления
-     */
     public void deleteProduct(int id) {
-        // Запрашиваем подтверждение удаления
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Подтверждение удаления");
         alert.setHeaderText(null);
@@ -206,7 +159,6 @@ public class AdminController {
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            // Удаляем товар из базы данных
             boolean success = productDAO.deleteProduct(id);
             
             if (success) {
@@ -218,13 +170,7 @@ public class AdminController {
         }
     }
 
-    /**
-     * Показать подробную информацию о пользователе
-     * 
-     * @param user пользователь для просмотра
-     */
     public void showUserDetails(User user) {
-        // Создаем новое окно для отображения подробностей пользователя
         Stage detailsStage = new Stage();
         detailsStage.setTitle("Информация о пользователе: " + user.getFullName());
         detailsStage.initModality(Modality.WINDOW_MODAL);
@@ -233,7 +179,6 @@ public class AdminController {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
         
-        // Информация о пользователе
         GridPane infoGrid = new GridPane();
         infoGrid.setHgap(10);
         infoGrid.setVgap(10);
@@ -263,7 +208,6 @@ public class AdminController {
         infoGrid.add(new Label("Роль:"), 0, 7);
         infoGrid.add(new Label(user.getRole().getName()), 1, 7);
         
-        // Форма для изменения скидки
         HBox discountBox = new HBox(10);
         discountBox.setPadding(new Insets(10, 0, 10, 0));
         
@@ -296,16 +240,14 @@ public class AdminController {
         
         discountBox.getChildren().addAll(discountLabel, discountField, updateDiscountButton);
         
-        // Таблица заказов пользователя
         Label ordersLabel = new Label("Заказы пользователя:");
         
         TableView<Order> ordersTable = new TableView<>();
         
-        // Столбец с ID заказа
         TableColumn<Order, Integer> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         
-        // Столбец с датой заказа
+    
         TableColumn<Order, String> orderDateColumn = new TableColumn<>("Дата заказа");
         orderDateColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
@@ -313,21 +255,16 @@ public class AdminController {
         });
         orderDateColumn.setPrefWidth(150);
         
-        // Столбец с общей стоимостью
         TableColumn<Order, Double> totalCostColumn = new TableColumn<>("Сумма (руб.)");
         totalCostColumn.setCellValueFactory(new PropertyValueFactory<>("totalCost"));
         
-        // Столбец со статусом
         TableColumn<Order, String> statusColumn = new TableColumn<>("Статус");
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
         
-        // Добавляем столбцы в таблицу
         ordersTable.getColumns().addAll(idColumn, orderDateColumn, totalCostColumn, statusColumn);
         
-        // Заполняем таблицу данными
         ordersTable.setItems(FXCollections.observableArrayList(orderDAO.getOrdersByUser(user.getId())));
         
-        // Кнопка "Закрыть"
         Button closeButton = new Button("Закрыть");
         closeButton.setOnAction(e -> detailsStage.close());
         
@@ -338,13 +275,7 @@ public class AdminController {
         detailsStage.show();
     }
 
-    /**
-     * Удалить пользователя
-     * 
-     * @param id идентификатор пользователя для удаления
-     */
     public void deleteUser(int id) {
-        // Проверяем, что пользователь не является администратором
         User user = userDAO.getUserById(id);
         
         if (user == null) {
@@ -357,7 +288,6 @@ public class AdminController {
             return;
         }
         
-        // Запрашиваем подтверждение удаления
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Подтверждение удаления");
         alert.setHeaderText(null);
@@ -366,7 +296,6 @@ public class AdminController {
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            // Удаляем пользователя из базы данных
             boolean success = userDAO.deleteUser(id);
             
             if (success) {
@@ -378,13 +307,7 @@ public class AdminController {
         }
     }
 
-    /**
-     * Показать подробную информацию о заказе
-     * 
-     * @param order заказ для просмотра
-     */
     public void showOrderDetails(Order order) {
-        // Создаем новое окно для отображения подробностей заказа
         Stage detailsStage = new Stage();
         detailsStage.setTitle("Подробности заказа №" + order.getId());
         detailsStage.initModality(Modality.WINDOW_MODAL);
@@ -393,7 +316,6 @@ public class AdminController {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
         
-        // Информация о заказе
         GridPane infoGrid = new GridPane();
         infoGrid.setHgap(10);
         infoGrid.setVgap(10);
@@ -422,13 +344,11 @@ public class AdminController {
         
         infoGrid.add(new Label("Итоговая стоимость:"), 0, 7);
         infoGrid.add(new Label(String.format("%.2f руб.", order.getTotalCost())), 1, 7);
-        
-        // Таблица товаров в заказе
+
         Label itemsLabel = new Label("Товары в заказе:");
         
         TableView<OrderItem> itemsTable = new TableView<>();
         
-        // Столбец с названием товара
         TableColumn<OrderItem, String> nameColumn = new TableColumn<>("Название");
         nameColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
@@ -436,28 +356,22 @@ public class AdminController {
         });
         nameColumn.setPrefWidth(200);
         
-        // Столбец с ценой товара
         TableColumn<OrderItem, Double> priceColumn = new TableColumn<>("Цена (руб.)");
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
         
-        // Столбец с количеством товара
         TableColumn<OrderItem, Integer> quantityColumn = new TableColumn<>("Количество");
         quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         
-        // Столбец с суммой
         TableColumn<OrderItem, Double> subtotalColumn = new TableColumn<>("Сумма (руб.)");
         subtotalColumn.setCellValueFactory(cellData -> {
             double subtotal = cellData.getValue().getPrice() * cellData.getValue().getQuantity();
             return new javafx.beans.property.SimpleDoubleProperty(subtotal).asObject();
         });
         
-        // Добавляем столбцы в таблицу
         itemsTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, subtotalColumn);
         
-        // Заполняем таблицу данными
         itemsTable.setItems(FXCollections.observableArrayList(order.getItems()));
         
-        // Кнопки
         HBox buttonBox = new HBox(10);
         
         Button changeStatusButton = new Button("Изменить статус");
@@ -484,13 +398,7 @@ public class AdminController {
         detailsStage.show();
     }
 
-    /**
-     * Показать диалог изменения статуса заказа
-     * 
-     * @param order заказ для изменения статуса
-     */
     public void showChangeStatusDialog(Order order) {
-        // Создаем новое окно для изменения статуса заказа
         Stage dialogStage = new Stage();
         dialogStage.setTitle("Изменение статуса заказа №" + order.getId());
         dialogStage.initModality(Modality.WINDOW_MODAL);
@@ -499,17 +407,14 @@ public class AdminController {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
         
-        // Информация о текущем статусе
         Label currentStatusLabel = new Label("Текущий статус: " + order.getStatus());
         
-        // Выбор нового статуса
         Label newStatusLabel = new Label("Новый статус:");
         
         ComboBox<String> statusComboBox = new ComboBox<>();
         statusComboBox.getItems().addAll("В обработке", "Отправлен", "Доставлен", "Отменен");
         statusComboBox.setValue(order.getStatus());
         
-        // Кнопки
         HBox buttonBox = new HBox(10);
         
         Button saveButton = new Button("Сохранить");
@@ -543,13 +448,7 @@ public class AdminController {
         dialogStage.show();
     }
 
-    /**
-     * Показать диалог установки даты доставки заказа
-     * 
-     * @param order заказ для установки даты доставки
-     */
     public void showSetDeliveryDateDialog(Order order) {
-        // Создаем новое окно для установки даты доставки заказа
         Stage dialogStage = new Stage();
         dialogStage.setTitle("Установка даты доставки заказа №" + order.getId());
         dialogStage.initModality(Modality.WINDOW_MODAL);
@@ -558,11 +457,9 @@ public class AdminController {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
         
-        // Информация о текущей дате доставки
         Label currentDateLabel = new Label("Текущая дата доставки: " + 
                 (order.getDeliveryDate() != null ? order.getDeliveryDate().toString() : "Не указана"));
         
-        // Выбор новой даты доставки
         Label newDateLabel = new Label("Новая дата доставки (ГГГГ-ММ-ДД):");
         
         TextField dateField = new TextField();
@@ -570,7 +467,6 @@ public class AdminController {
             dateField.setText(order.getDeliveryDate().toLocalDate().toString());
         }
         
-        // Кнопки
         HBox buttonBox = new HBox(10);
         
         Button saveButton = new Button("Сохранить");
@@ -595,7 +491,6 @@ public class AdminController {
                     view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Некорректный формат даты. Используйте формат ГГГГ-ММ-ДД");
                 }
             } else {
-                // Если поле пустое, устанавливаем null (удаляем дату доставки)
                 boolean success = orderDAO.updateDeliveryDate(order.getId(), null);
                 
                 if (success) {
@@ -620,13 +515,9 @@ public class AdminController {
         dialogStage.show();
     }
 
-    /**
-     * Удалить заказ
-     * 
-     * @param id идентификатор заказа для удаления
-     */
+
     public void deleteOrder(int id) {
-        // Запрашиваем подтверждение удаления
+
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Подтверждение удаления");
         alert.setHeaderText(null);
@@ -635,7 +526,7 @@ public class AdminController {
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            // Удаляем заказ из базы данных
+
             boolean success = orderDAO.deleteOrder(id);
             
             if (success) {
@@ -647,14 +538,12 @@ public class AdminController {
         }
     }
 
-    /**
-     * Обработать выход из системы
-     */
+
     public void handleLogout() {
-        // Закрываем главное окно
+
         primaryStage.close();
         
-        // Открываем окно входа
+
         LoginView loginView = new LoginView();
         loginView.start(new Stage());
     }

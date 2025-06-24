@@ -11,16 +11,12 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Класс для работы с товарами в базе данных
- */
+//Класс для работы с товарами в базе данных
+
 public class ProductDAO {
 
-    /**
-     * Получить все товары из базы данных
-     * 
-     * @return список товаров
-     */
+    //Получить все товары из базы данных
+    //return список товаров
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products";
@@ -38,11 +34,8 @@ public class ProductDAO {
         return products;
     }
 
-    /**
-     * Получить все товары, которые есть в наличии
-     * 
-     * @return список товаров в наличии
-     */
+    //Получить все товары, которые есть в наличии
+    //return список товаров в наличии
     public List<Product> getAvailableProducts() {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products WHERE stock_quantity > 0";
@@ -60,12 +53,9 @@ public class ProductDAO {
         return products;
     }
 
-    /**
-     * Найти товары по названию (поиск по части названия, без учета регистра)
-     * 
-     * @param searchTerm строка для поиска
-     * @return список найденных товаров
-     */
+    //Найти товары по названию (поиск по части названия, без учета регистра)
+    //searchTerm строка для поиска
+    //return список найденных товаров
     public List<Product> searchProductsByName(String searchTerm) {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products WHERE LOWER(name) LIKE ?";
@@ -85,13 +75,10 @@ public class ProductDAO {
         return products;
     }
 
-    /**
-     * Фильтровать товары по диапазону цен
-     * 
-     * @param minPrice минимальная цена (включительно)
-     * @param maxPrice максимальная цена (включительно)
-     * @return список товаров в указанном диапазоне цен
-     */
+    //Фильтровать товары по диапазону цен
+    //minPrice минимальная цена (включительно)
+    //maxPrice максимальная цена (включительно)
+    //return список товаров в указанном диапазоне цен
     public List<Product> filterProductsByPrice(double minPrice, double maxPrice) {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products WHERE price >= ? AND price <= ?";
@@ -112,12 +99,9 @@ public class ProductDAO {
         return products;
     }
 
-    /**
-     * Получить товар по идентификатору
-     * 
-     * @param id идентификатор товара
-     * @return товар или null, если товар не найден
-     */
+    //Получить товар по идентификатору
+    //id идентификатор товара
+    //return товар или null, если товар не найден
     public Product getProductById(int id) {
         String sql = "SELECT * FROM products WHERE id = ?";
 
@@ -136,14 +120,13 @@ public class ProductDAO {
         return null;
     }
 
-    /**
-     * Добавить новый товар в базу данных
-     * 
-     * @param product товар для добавления
-     * @return true, если товар успешно добавлен, иначе false
-     */
+    //Добавить новый товар в базу данных
+    //product товар для добавления
+    //return true, если товар успешно добавлен, иначе false
     public boolean addProduct(Product product) {
         String sql = "INSERT INTO products (name, price, unit, stock_quantity) VALUES (?, ?, ?, ?)";
+        System.out.println("Добавление товара: " + product.getName() + ", Цена: " + product.getPrice() + 
+                          ", Ед.изм.: " + product.getUnit() + ", Количество: " + product.getStockQuantity());
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -153,29 +136,34 @@ public class ProductDAO {
             pstmt.setString(3, product.getUnit());
             pstmt.setInt(4, product.getStockQuantity());
 
+            System.out.println("Выполнение SQL-запроса: " + sql);
             int affectedRows = pstmt.executeUpdate();
+            System.out.println("Затронуто строк: " + affectedRows);
             
             if (affectedRows > 0) {
                 try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
-                        product.setId(generatedKeys.getInt(1));
+                        int id = generatedKeys.getInt(1);
+                        product.setId(id);
+                        System.out.println("Товар успешно добавлен с ID: " + id);
                         return true;
+                    } else {
+                        System.out.println("Не удалось получить ID добавленного товара");
                     }
                 }
             }
+            System.out.println("Товар не был добавлен");
             return false;
         } catch (SQLException e) {
+            System.out.println("Ошибка при добавлении товара: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
     }
 
-    /**
-     * Обновить товар в базе данных
-     * 
-     * @param product товар для обновления
-     * @return true, если товар успешно обновлен, иначе false
-     */
+    //Обновить товар в базе данных
+    //product товар для обновления
+    //return true, если товар успешно обновлен, иначе false
     public boolean updateProduct(Product product) {
         String sql = "UPDATE products SET name = ?, price = ?, unit = ?, stock_quantity = ? WHERE id = ?";
 
@@ -196,13 +184,10 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Обновить количество товара на складе
-     * 
-     * @param productId    идентификатор товара
-     * @param newQuantity  новое количество товара
-     * @return true, если количество успешно обновлено, иначе false
-     */
+    //Обновить количество товара на складе
+    //productId идентификатор товара
+    //newQuantity новое количество товара
+    //return true, если количество успешно обновлено, иначе false
     public boolean updateProductQuantity(int productId, int newQuantity) {
         String sql = "UPDATE products SET stock_quantity = ? WHERE id = ?";
 
@@ -220,12 +205,9 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Удалить товар из базы данных
-     * 
-     * @param id идентификатор товара для удаления
-     * @return true, если товар успешно удален, иначе false
-     */
+    //Удалить товар из базы данных
+    //id идентификатор товара для удаления
+    //return true, если товар успешно удален, иначе false
     public boolean deleteProduct(int id) {
         String sql = "DELETE FROM products WHERE id = ?";
 
@@ -241,13 +223,10 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Извлечь товар из результата запроса
-     * 
-     * @param rs результат запроса
-     * @return товар
-     * @throws SQLException если произошла ошибка при работе с базой данных
-     */
+    //Извлечь товар из результата запроса
+    //rs результат запроса
+    //return товар
+    //throws SQLException если произошла ошибка при работе с базой данных
     private Product extractProductFromResultSet(ResultSet rs) throws SQLException {
         return new Product(
                 rs.getInt("id"),

@@ -21,9 +21,7 @@ import com.olineshop.model.User;
 
 import java.time.LocalDateTime;
 
-/**
- * Класс представления главного окна клиентской части приложения
- */
+//Класс представления главного окна клиентской части приложения
 public class MainClientView {
     private ClientController controller;
     private User currentUser;
@@ -32,74 +30,55 @@ public class MainClientView {
     private TableView<Order> orderHistoryTable;
     private Label totalPriceLabel;
 
-    /**
-     * Конструктор класса
-     * 
-     * @param user текущий пользователь
-     */
+    //Конструктор класса
+    //user текущий пользователь
     public MainClientView(User user) {
         this.currentUser = user;
     }
 
-    /**
-     * Запустить главное окно клиентской части
-     * 
-     * @param primaryStage главное окно приложения
-     */
+    //Запустить главное окно клиентской части
+    //primaryStage главное окно приложения
     public void start(Stage primaryStage) {
         this.controller = new ClientController(this, primaryStage, currentUser);
 
         primaryStage.setTitle("Интернет-магазин - Клиент: " + currentUser.getFullName());
 
-        // Создаем основной контейнер
         BorderPane borderPane = new BorderPane();
         
-        // Верхняя панель с информацией о пользователе
         HBox topPanel = createTopPanel();
         borderPane.setTop(topPanel);
         
-        // Создаем вкладки
         TabPane tabPane = new TabPane();
         
-        // Вкладка "Каталог товаров"
         Tab catalogTab = new Tab("Каталог товаров");
         catalogTab.setClosable(false);
         VBox catalogBox = createCatalogTab();
         catalogTab.setContent(catalogBox);
         
-        // Вкладка "Корзина"
         Tab cartTab = new Tab("Корзина");
         cartTab.setClosable(false);
         VBox cartBox = createCartTab();
         cartTab.setContent(cartBox);
         
-        // Вкладка "История заказов"
         Tab orderHistoryTab = new Tab("История заказов");
         orderHistoryTab.setClosable(false);
         VBox orderHistoryBox = createOrderHistoryTab();
         orderHistoryTab.setContent(orderHistoryBox);
         
-        // Добавляем вкладки в панель
         tabPane.getTabs().addAll(catalogTab, cartTab, orderHistoryTab);
         
-        // Добавляем панель вкладок в центр основного контейнера
         borderPane.setCenter(tabPane);
 
-        // Создаем сцену
         Scene scene = new Scene(borderPane, 800, 600);
         primaryStage.setScene(scene);
         primaryStage.show();
         
-        // Загружаем данные
         controller.loadProducts();
         controller.loadOrderHistory();
     }
 
-    /**
-     * Создать верхнюю панель с информацией о пользователе
-     * 
-     * @return панель с информацией о пользователе
-     */
+    //Создать верхнюю панель с информацией о пользователе
+    //return панель с информацией о пользователе
     private HBox createTopPanel() {
         HBox topPanel = new HBox(10);
         topPanel.setPadding(new Insets(10, 10, 10, 10));
@@ -118,11 +97,8 @@ public class MainClientView {
         return topPanel;
     }
 
-    /**
-     * Создать вкладку "Каталог товаров"
-     * 
-     * @return контейнер с содержимым вкладки "Каталог товаров"
-     */
+    //Создать вкладку "Каталог товаров"
+    //return контейнер с содержимым вкладки "Каталог товаров"
     private VBox createCatalogTab() {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
@@ -130,18 +106,15 @@ public class MainClientView {
         Text title = new Text("Доступные товары");
         title.setFont(Font.font("Tahoma", FontWeight.NORMAL, 16));
         
-        // Панель поиска и фильтрации
         HBox searchPanel = new HBox(10);
         searchPanel.setPadding(new Insets(0, 0, 10, 0));
         
-        // Поиск по названию
         Label searchLabel = new Label("Поиск:");
         TextField searchField = new TextField();
         searchField.setPrefWidth(200);
         Button searchButton = new Button("Найти");
         searchButton.setOnAction(e -> controller.searchProducts(searchField.getText()));
         
-        // Фильтр по цене
         Label priceLabel = new Label("Цена от:");
         TextField minPriceField = new TextField();
         minPriceField.setPrefWidth(80);
@@ -170,7 +143,6 @@ public class MainClientView {
             }
         });
         
-        // Кнопка сброса фильтров
         Button resetButton = new Button("Сбросить");
         resetButton.setOnAction(e -> {
             searchField.clear();
@@ -181,42 +153,32 @@ public class MainClientView {
         
         searchPanel.getChildren().addAll(searchLabel, searchField, searchButton, priceLabel, minPriceField, toLabel, maxPriceField, filterButton, resetButton);
         
-        // Создаем таблицу товаров
         productTable = new TableView<>();
         
-        // Столбец с ID товара
         TableColumn<Product, Integer> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         
-        // Столбец с названием товара
         TableColumn<Product, String> nameColumn = new TableColumn<>("Название");
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         nameColumn.setPrefWidth(200);
         
-        // Столбец с ценой товара
         TableColumn<Product, Double> priceColumn = new TableColumn<>("Цена (руб.)");
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
         
-        // Столбец с единицей измерения
         TableColumn<Product, String> unitColumn = new TableColumn<>("Ед. изм.");
         unitColumn.setCellValueFactory(new PropertyValueFactory<>("unit"));
         
-        // Столбец с количеством на складе
         TableColumn<Product, Integer> stockColumn = new TableColumn<>("В наличии");
         stockColumn.setCellValueFactory(new PropertyValueFactory<>("stockQuantity"));
         
-        // Добавляем столбцы в таблицу
         productTable.getColumns().addAll(idColumn, nameColumn, priceColumn, unitColumn, stockColumn);
         
-        // Панель с кнопками
         HBox buttonPanel = new HBox(10);
         
-        // Поле для ввода количества товара
         Label quantityLabel = new Label("Количество:");
         Spinner<Integer> quantitySpinner = new Spinner<>(1, 100, 1);
         quantitySpinner.setEditable(true);
         
-        // Кнопка "Добавить в корзину"
         Button addToCartButton = new Button("Добавить в корзину");
         addToCartButton.setOnAction(e -> {
             Product selectedProduct = productTable.getSelectionModel().getSelectedItem();
@@ -235,11 +197,8 @@ public class MainClientView {
         return vbox;
     }
 
-    /**
-     * Создать вкладку "Корзина"
-     * 
-     * @return контейнер с содержимым вкладки "Корзина"
-     */
+    //Создать вкладку "Корзина"
+    //return контейнер с содержимым вкладки "Корзина"
     private VBox createCartTab() {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
@@ -247,10 +206,8 @@ public class MainClientView {
         Text title = new Text("Товары в корзине");
         title.setFont(Font.font("Tahoma", FontWeight.NORMAL, 16));
         
-        // Создаем таблицу товаров в корзине
         cartTable = new TableView<>();
         
-        // Столбец с названием товара
         TableColumn<OrderItem, String> nameColumn = new TableColumn<>("Название");
         nameColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
@@ -258,31 +215,25 @@ public class MainClientView {
         });
         nameColumn.setPrefWidth(200);
         
-        // Столбец с ценой товара
         TableColumn<OrderItem, Double> priceColumn = new TableColumn<>("Цена (руб.)");
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
         
-        // Столбец с количеством товара
         TableColumn<OrderItem, Integer> quantityColumn = new TableColumn<>("Количество");
         quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         
-        // Столбец с суммой
         TableColumn<OrderItem, Double> subtotalColumn = new TableColumn<>("Сумма (руб.)");
         subtotalColumn.setCellValueFactory(cellData -> {
             double subtotal = cellData.getValue().getPrice() * cellData.getValue().getQuantity();
             return new javafx.beans.property.SimpleDoubleProperty(subtotal).asObject();
         });
         
-        // Добавляем столбцы в таблицу
         cartTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, subtotalColumn);
         
-        // Панель с общей суммой и кнопками
         HBox bottomPanel = new HBox(10);
         
         totalPriceLabel = new Label("Итого: 0.00 руб.");
         totalPriceLabel.setFont(Font.font("Tahoma", FontWeight.BOLD, 14));
         
-        // Кнопка "Удалить из корзины"
         Button removeFromCartButton = new Button("Удалить из корзины");
         removeFromCartButton.setOnAction(e -> {
             OrderItem selectedItem = cartTable.getSelectionModel().getSelectedItem();
@@ -293,7 +244,6 @@ public class MainClientView {
             }
         });
         
-        // Кнопка "Оформить заказ"
         Button checkoutButton = new Button("Оформить заказ");
         checkoutButton.setOnAction(e -> controller.showOrderConfirmationDialog());
         
@@ -304,11 +254,8 @@ public class MainClientView {
         return vbox;
     }
 
-    /**
-     * Создать вкладку "История заказов"
-     * 
-     * @return контейнер с содержимым вкладки "История заказов"
-     */
+    //Создать вкладку "История заказов"
+    //return контейнер с содержимым вкладки "История заказов"
     private VBox createOrderHistoryTab() {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
@@ -316,14 +263,11 @@ public class MainClientView {
         Text title = new Text("История заказов");
         title.setFont(Font.font("Tahoma", FontWeight.NORMAL, 16));
         
-        // Создаем таблицу истории заказов
         orderHistoryTable = new TableView<>();
         
-        // Столбец с ID заказа
         TableColumn<Order, Integer> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         
-        // Столбец с датой заказа
         TableColumn<Order, String> orderDateColumn = new TableColumn<>("Дата заказа");
         orderDateColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
@@ -331,7 +275,6 @@ public class MainClientView {
         });
         orderDateColumn.setPrefWidth(150);
         
-        // Столбец с датой доставки
         TableColumn<Order, String> deliveryDateColumn = new TableColumn<>("Дата доставки");
         deliveryDateColumn.setCellValueFactory(cellData -> {
             LocalDateTime deliveryDate = cellData.getValue().getDeliveryDate();
@@ -340,18 +283,14 @@ public class MainClientView {
         });
         deliveryDateColumn.setPrefWidth(150);
         
-        // Столбец с общей стоимостью
         TableColumn<Order, Double> totalCostColumn = new TableColumn<>("Сумма (руб.)");
         totalCostColumn.setCellValueFactory(new PropertyValueFactory<>("totalCost"));
         
-        // Столбец со статусом
         TableColumn<Order, String> statusColumn = new TableColumn<>("Статус");
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
         
-        // Добавляем столбцы в таблицу
         orderHistoryTable.getColumns().addAll(idColumn, orderDateColumn, deliveryDateColumn, totalCostColumn, statusColumn);
         
-        // Кнопка "Подробности"
         Button detailsButton = new Button("Подробности заказа");
         detailsButton.setOnAction(e -> {
             Order selectedOrder = orderHistoryTable.getSelectionModel().getSelectedItem();
@@ -367,42 +306,30 @@ public class MainClientView {
         return vbox;
     }
 
-    /**
-     * Обновить таблицу товаров
-     * 
-     * @param products список товаров
-     */
+    //Обновить таблицу товаров
+    //products список товаров
     public void updateProductTable(ObservableList<Product> products) {
         productTable.setItems(products);
     }
 
-    /**
-     * Обновить таблицу корзины
-     * 
-     * @param cartItems список товаров в корзине
-     * @param totalPrice общая стоимость товаров в корзине
-     */
+    //Обновить таблицу корзины
+    //cartItems список товаров в корзине
+    //totalPrice общая стоимость товаров в корзине
     public void updateCartTable(ObservableList<OrderItem> cartItems, double totalPrice) {
         cartTable.setItems(cartItems);
         totalPriceLabel.setText(String.format("Итого: %.2f руб.", totalPrice));
     }
 
-    /**
-     * Обновить таблицу истории заказов
-     * 
-     * @param orders список заказов
-     */
+    //Обновить таблицу истории заказов
+    //orders список заказов
     public void updateOrderHistoryTable(ObservableList<Order> orders) {
         orderHistoryTable.setItems(orders);
     }
 
-    /**
-     * Показать диалоговое окно с сообщением
-     * 
-     * @param alertType тип диалогового окна
-     * @param title заголовок окна
-     * @param message сообщение
-     */
+    //Показать диалоговое окно с сообщением
+    //alertType тип диалогового окна
+    //title заголовок окна
+    //message сообщение
     public void showAlert(Alert.AlertType alertType, String title, String message) {
         Alert alert = new Alert(alertType);
         alert.setTitle(title);

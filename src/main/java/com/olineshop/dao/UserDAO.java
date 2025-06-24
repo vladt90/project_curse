@@ -12,17 +12,13 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Класс для работы с пользователями в базе данных
- */
+//Класс для работы с пользователями в базе данных
+
 public class UserDAO {
     private RoleDAO roleDAO = new RoleDAO();
 
-    /**
-     * Получить всех пользователей из базы данных
-     * 
-     * @return список пользователей
-     */
+    //Получить всех пользователей из базы данных
+    //return список пользователей
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
         String sql = "SELECT * FROM users";
@@ -40,12 +36,9 @@ public class UserDAO {
         return users;
     }
 
-    /**
-     * Получить пользователя по идентификатору
-     * 
-     * @param id идентификатор пользователя
-     * @return пользователь или null, если пользователь не найден
-     */
+    //Получить пользователя по идентификатору
+    //id идентификатор пользователя
+    //return пользователь или null, если пользователь не найден
     public User getUserById(int id) {
         String sql = "SELECT * FROM users WHERE id = ?";
 
@@ -64,12 +57,9 @@ public class UserDAO {
         return null;
     }
 
-    /**
-     * Получить пользователя по логину
-     * 
-     * @param login логин пользователя
-     * @return пользователь или null, если пользователь не найден
-     */
+    //Получить пользователя по логину
+    //login логин пользователя
+    //return пользователь или null, если пользователь не найден
     public User getUserByLogin(String login) {
         String sql = "SELECT * FROM users WHERE login = ?";
 
@@ -88,22 +78,17 @@ public class UserDAO {
         return null;
     }
 
-    /**
-     * Аутентифицировать пользователя по логину и паролю
-     * 
-     * @param login    логин пользователя
-     * @param password пароль пользователя (в открытом виде)
-     * @return пользователь или null, если аутентификация не удалась
-     */
+    //Аутентифицировать пользователя по логину и паролю
+    //return пользователь или null, если аутентифик не удалась
     public User authenticate(String login, String password) {
         String sql = "SELECT * FROM users WHERE login = ? AND password_hash = ?";
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            // В реальном приложении здесь должно быть хеширование пароля
+            // здесь должно быть хеширование пароля
             pstmt.setString(1, login);
-            pstmt.setString(2, password); // Для простоты используем пароль без хеширования
+            pstmt.setString(2, password); 
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
@@ -116,12 +101,9 @@ public class UserDAO {
         return null;
     }
 
-    /**
-     * Добавить нового пользователя в базу данных
-     * 
-     * @param user пользователь для добавления
-     * @return true, если пользователь успешно добавлен, иначе false
-     */
+    //Добавить нового пользователя в базу данных
+    //user пользователь для добавления
+    //return true, если пользователь успешно добавлен, иначе false
     public boolean addUser(User user) {
         String sql = "INSERT INTO users (login, password_hash, first_name, last_name, email, phone, discount, role_id) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -155,12 +137,9 @@ public class UserDAO {
         }
     }
 
-    /**
-     * Обновить пользователя в базе данных
-     * 
-     * @param user пользователь для обновления
-     * @return true, если пользователь успешно обновлен, иначе false
-     */
+    //Обновить пользователя в базе данных
+    //user пользователь для обновления
+    //return true, если пользователь успешно обновлен, иначе false
     public boolean updateUser(User user) {
         String sql = "UPDATE users SET login = ?, password_hash = ?, first_name = ?, last_name = ?, "
                 + "email = ?, phone = ?, discount = ?, role_id = ? WHERE id = ?";
@@ -186,13 +165,10 @@ public class UserDAO {
         }
     }
 
-    /**
-     * Обновить скидку пользователя в базе данных
-     * 
-     * @param userId   идентификатор пользователя
-     * @param discount новая скидка
-     * @return true, если скидка успешно обновлена, иначе false
-     */
+    //Обновить скидку пользователя в базе данных
+    //userId идентификатор пользователя
+    //discount новая скидка
+    //return true, если скидка успешно обновлена, иначе false
     public boolean updateUserDiscount(int userId, double discount) {
         String sql = "UPDATE users SET discount = ? WHERE id = ?";
 
@@ -210,12 +186,9 @@ public class UserDAO {
         }
     }
 
-    /**
-     * Удалить пользователя из базы данных
-     * 
-     * @param id идентификатор пользователя для удаления
-     * @return true, если пользователь успешно удален, иначе false
-     */
+    //Удалить пользователя из базы данных
+    //id идентификатор пользователя для удаления
+    //return true, если пользователь успешно удален, иначе false
     public boolean deleteUser(int id) {
         String sql = "DELETE FROM users WHERE id = ?";
 
@@ -231,13 +204,10 @@ public class UserDAO {
         }
     }
 
-    /**
-     * Извлечь пользователя из результата запроса
-     * 
-     * @param rs результат запроса
-     * @return пользователь
-     * @throws SQLException если произошла ошибка при работе с базой данных
-     */
+    //Извлечь пользователя из результата запроса
+    //rs результат запроса
+    //return пользователь
+
     private User extractUserFromResultSet(ResultSet rs) throws SQLException {
         Role role = roleDAO.getRoleById(rs.getInt("role_id"));
         

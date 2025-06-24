@@ -8,76 +8,111 @@ import com.olineshop.view.LoginView;
 import com.olineshop.view.MainAdminView;
 import com.olineshop.view.MainClientView;
 import com.olineshop.view.RegisterView;
+import com.olineshop.dao.RoleDAO;
+import com.olineshop.model.Role;
 
-/**
- * Контроллер для окна входа в систему
- */
+//Контроллер для окна входа в систему
+
 public class LoginController {
     private final LoginView view;
     private final Stage primaryStage;
     private final UserDAO userDAO;
+    private final RoleDAO roleDAO;
+    
+    // Жестко заданные учетные данные администратора
+    private static final String ADMIN_LOGIN = "admin";
+    private static final String ADMIN_PASSWORD = "admin";
 
-    /**
-     * Конструктор контроллера
-     * 
-     * @param view представление окна входа
-     * @param primaryStage главное окно приложения
-     */
+    //Конструктор контроллера
+    //view представление окна входа
+    //primaryStage главное окно приложения
     public LoginController(LoginView view, Stage primaryStage) {
         this.view = view;
         this.primaryStage = primaryStage;
         this.userDAO = new UserDAO();
+        this.roleDAO = new RoleDAO();
+        System.out.println("LoginController инициализирован");
     }
 
-    /**
-     * Обработать нажатие на кнопку "Войти"
-     * 
-     * @param login логин пользователя
-     * @param password пароль пользователя
-     */
+    //нажатие на кнопку "Войти"
     public void handleLogin(String login, String password) {
-        // Проверяем, что поля не пустые
+        System.out.println("Попытка входа: логин = " + login);
+        
+        // поля не пустые?
         if (login == null || login.trim().isEmpty()) {
+            System.out.println("Ошибка: пустой логин");
             view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Введите логин");
             return;
         }
         
         if (password == null || password.trim().isEmpty()) {
+            System.out.println("Ошибка: пустой пароль");
             view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Введите пароль");
             return;
         }
         
-        // Проверяем учетные данные пользователя
+        // Проверяем учетные данные администратора
+        if (login.equals(ADMIN_LOGIN) && password.equals(ADMIN_PASSWORD)) {
+            System.out.println("Вход выполнен с использованием жестко заданных учетных данных администратора");
+            
+            // Создаем объект администратора
+            Role adminRole = roleDAO.getRoleById(1); // Роль администратора (ID = 1)
+            if (adminRole == null) {
+                System.out.println("Ошибка: не удалось получить роль администратора");
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка входа", "Не удалось получить роль администратора");
+                return;
+            }
+            
+            User adminUser = new User();
+            adminUser.setId(0); // Временный ID
+            adminUser.setLogin(ADMIN_LOGIN);
+            adminUser.setFirstName("Администратор");
+            adminUser.setLastName("Системы");
+            adminUser.setEmail("admin@example.com");
+            adminUser.setRole(adminRole);
+            
+
+            primaryStage.close();
+            
+            System.out.println("Открываем окно администратора");
+            MainAdminView adminView = new MainAdminView();
+            adminView.start(new Stage());
+            return;
+        }
+        
+        System.out.println("Проверка учетных данных в базе данных...");
         User user = userDAO.authenticate(login, password);
         
         if (user != null) {
-            // Закрываем окно входа
-            primaryStage.close();
+            System.out.println("Вход успешен. Пользователь: " + user.getFirstName() + " " + user.getLastName() + ", роль: " + user.getRole().getName());
             
-            // Открываем соответствующее окно в зависимости от роли пользователя
+
+            primaryStage.close();
+
             if (user.isAdmin()) {
-                // Пользователь - администратор
+                System.out.println("Открываем окно администратора");
+
                 MainAdminView adminView = new MainAdminView();
                 adminView.start(new Stage());
             } else {
-                // Пользователь - клиент
+                System.out.println("Открываем окно клиента");
+
                 MainClientView clientView = new MainClientView(user);
                 clientView.start(new Stage());
             }
         } else {
-            // Неверный логин или пароль
+            System.out.println("Ошибка входа: неверный логин или пароль");
+
             view.showAlert(Alert.AlertType.ERROR, "Ошибка входа", "Неверный логин или пароль");
         }
     }
 
-    /**
-     * Показать окно регистрации
-     */
+
     public void showRegistrationWindow() {
-        // Закрываем окно входа
+        System.out.println("Переход к окну регистрации");
+
         primaryStage.close();
         
-        // Открываем окно регистрации
         RegisterView registerView = new RegisterView();
         registerView.start(new Stage());
     }

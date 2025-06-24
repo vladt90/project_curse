@@ -11,18 +11,14 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Класс для работы с заказами в базе данных
- */
+//Класс для работы с заказами в базе данных
+
 public class OrderDAO {
     private UserDAO userDAO = new UserDAO();
     private ProductDAO productDAO = new ProductDAO();
 
-    /**
-     * Получить все заказы из базы данных
-     * 
-     * @return список заказов
-     */
+    //Получить все заказы из базы данных
+    //return список заказов
     public List<Order> getAllOrders() {
         List<Order> orders = new ArrayList<>();
         String sql = "SELECT * FROM orders";
@@ -42,12 +38,9 @@ public class OrderDAO {
         return orders;
     }
 
-    /**
-     * Получить заказы пользователя
-     * 
-     * @param userId идентификатор пользователя
-     * @return список заказов пользователя
-     */
+    //Получить заказы пользователя
+    //userId идентификатор пользователя
+    //return список заказов пользователя
     public List<Order> getOrdersByUser(int userId) {
         List<Order> orders = new ArrayList<>();
         String sql = "SELECT * FROM orders WHERE user_id = ?";
@@ -69,12 +62,9 @@ public class OrderDAO {
         return orders;
     }
 
-    /**
-     * Получить заказ по идентификатору
-     * 
-     * @param id идентификатор заказа
-     * @return заказ или null, если заказ не найден
-     */
+    //Получить заказ по идентификатору
+    //id идентификатор заказа
+    //return заказ или null, если заказ не найден
     public Order getOrderById(int id) {
         String sql = "SELECT * FROM orders WHERE id = ?";
 
@@ -95,12 +85,9 @@ public class OrderDAO {
         return null;
     }
 
-    /**
-     * Добавить новый заказ в базу данных
-     * 
-     * @param order заказ для добавления
-     * @return true, если заказ успешно добавлен, иначе false
-     */
+    //Добавить новый заказ в базу данных
+    //order заказ для добавления
+    //return true, если заказ успешно добавлен, иначе false
     public boolean addOrder(Order order) {
         String sql = "INSERT INTO orders (user_id, order_date, delivery_date, total_cost, status) VALUES (?, ?, ?, ?, ?)";
 
@@ -139,12 +126,9 @@ public class OrderDAO {
         }
     }
 
-    /**
-     * Добавить товары в заказ
-     * 
-     * @param order заказ с товарами
-     * @return true, если товары успешно добавлены, иначе false
-     */
+    //Добавить товары в заказ
+    //order заказ с товарами
+    //return true, если товары успешно добавлены, иначе false
     private boolean addOrderItems(Order order) {
         String sql = "INSERT INTO order_items (order_id, product_id, quantity, price_per_item) VALUES (?, ?, ?, ?)";
 
@@ -172,13 +156,10 @@ public class OrderDAO {
         }
     }
 
-    /**
-     * Обновить статус заказа
-     * 
-     * @param orderId идентификатор заказа
-     * @param status новый статус
-     * @return true, если статус успешно обновлен, иначе false
-     */
+    //Обновить статус заказа
+    //orderId идентификатор заказа
+    //status новый статус
+    //return true, если статус успешно обновлен, иначе false
     public boolean updateOrderStatus(int orderId, String status) {
         String sql = "UPDATE orders SET status = ? WHERE id = ?";
 
@@ -196,13 +177,10 @@ public class OrderDAO {
         }
     }
 
-    /**
-     * Обновить дату доставки заказа
-     * 
-     * @param orderId идентификатор заказа
-     * @param deliveryDate новая дата доставки
-     * @return true, если дата успешно обновлена, иначе false
-     */
+    //Обновить дату доставки заказа
+    //orderId идентификатор заказа
+    //deliveryDate новая дата доставки
+    //return true, если дата успешно обновлена, иначе false
     public boolean updateDeliveryDate(int orderId, LocalDateTime deliveryDate) {
         String sql = "UPDATE orders SET delivery_date = ? WHERE id = ?";
 
@@ -225,12 +203,9 @@ public class OrderDAO {
         }
     }
 
-    /**
-     * Удалить заказ из базы данных
-     * 
-     * @param id идентификатор заказа для удаления
-     * @return true, если заказ успешно удален, иначе false
-     */
+    //Удалить заказ из базы данных
+    //id идентификатор заказа для удаления
+    //return true, если заказ успешно удален, иначе false
     public boolean deleteOrder(int id) {
         // Сначала удаляем товары из заказа (из-за внешнего ключа)
         String sqlItems = "DELETE FROM order_items WHERE order_id = ?";
@@ -263,11 +238,8 @@ public class OrderDAO {
         }
     }
 
-    /**
-     * Загрузить товары для заказа
-     * 
-     * @param order заказ
-     */
+    //Загрузить товары для заказа
+    //order заказ
     private void loadOrderItems(Order order) {
         String sql = "SELECT oi.*, p.name, p.unit FROM order_items oi " +
                      "JOIN products p ON oi.product_id = p.id " +
@@ -298,13 +270,10 @@ public class OrderDAO {
         }
     }
 
-    /**
-     * Извлечь заказ из результата запроса
-     * 
-     * @param rs результат запроса
-     * @return заказ
-     * @throws SQLException если произошла ошибка при работе с базой данных
-     */
+    //Извлечь заказ из результата запроса
+    //rs результат запроса
+    //return заказ
+    //throws SQLException если произошла ошибка при работе с базой данных
     private Order extractOrderFromResultSet(ResultSet rs) throws SQLException {
         int userId = rs.getInt("user_id");
         User user = userDAO.getUserById(userId);

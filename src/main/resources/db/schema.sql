@@ -48,4 +48,7 @@ CREATE TABLE `order_items` (
   FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE
 );
 
-INSERT INTO `roles` (`name`) VALUES ('Администратор'), ('Клиент'); 
+INSERT INTO `roles` (`name`) VALUES ('Администратор'), ('Клиент');
+
+INSERT INTO `users` (`login`, `password_hash`, `first_name`, `last_name`, `email`, `phone`, `discount`, `role_id`) 
+VALUES ('admin', 'admin', 'Иван', 'К', 'ivanK@mail.ru', '89123456789', 0.00, 1); 

@@ -24,9 +24,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Контроллер для клиентской части приложения
- */
+
+ //Конт для клиентов
+ 
 public class ClientController {
     private final MainClientView view;
     private final Stage primaryStage;
@@ -40,13 +40,11 @@ public class ClientController {
     private final ObservableList<OrderItem> cartItems;
     private final ObservableList<Order> orders;
     
-    /**
-     * Конструктор контроллера
-     * 
-     * @param view представление клиентской части
-     * @param primaryStage главное окно приложения
-     * @param currentUser текущий пользователь
-     */
+    
+    
+     //view клиентская часть
+     //primaryStage окно
+     //currentUser ттек пользователь
     public ClientController(MainClientView view, Stage primaryStage, User currentUser) {
         this.view = view;
         this.primaryStage = primaryStage;
@@ -61,23 +59,18 @@ public class ClientController {
         this.orders = FXCollections.observableArrayList();
     }
 
-    /**
-     * Загрузить список товаров
-     */
+    //загрузка товаров(сп)
     public void loadProducts() {
         products.clear();
         products.addAll(productDAO.getAllProducts());
         view.updateProductTable(products);
     }
     
-    /**
-     * Поиск товаров по названию
-     * 
-     * @param searchTerm строка для поиска
-     */
+    //поиск товаров по названию
+     //searchTerm строка для поиска
     public void searchProducts(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            // Если строка поиска пуста, показываем все товары
+            //показ всех товаров
             loadProducts();
             return;
         }
@@ -87,47 +80,39 @@ public class ClientController {
         view.updateProductTable(products);
     }
     
-    /**
-     * Фильтрация товаров по цене
-     * 
-     * @param minPrice минимальная цена
-     * @param maxPrice максимальная цена
-     */
+    //фильтр цены
+     //minPrice мин цена
+     //maxPrice мак цена
     public void filterProductsByPrice(double minPrice, double maxPrice) {
         products.clear();
         products.addAll(productDAO.filterProductsByPrice(minPrice, maxPrice));
         view.updateProductTable(products);
     }
 
-    /**
-     * Загрузить историю заказов пользователя
-     */
+    // для истории бож (главное не забыть!!!!)
     public void loadOrderHistory() {
         orders.clear();
         orders.addAll(orderDAO.getOrdersByUser(currentUser.getId()));
         view.updateOrderHistoryTable(orders);
     }
 
-    /**
-     * Добавить товар в корзину
-     * 
-     * @param product товар для добавления
-     * @param quantity количество товара
-     */
+    //добавление в корзину
+    //product товар
+    //quantity количество
     public void addToCart(Product product, int quantity) {
-        // Проверяем, достаточно ли товара на складе
+        // есть ли на складе
         if (product.getStockQuantity() < quantity) {
             view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Недостаточно товара на складе");
             return;
         }
         
-        // Проверяем, есть ли уже такой товар в корзине
+        // есть ли в корзине
         for (OrderItem item : cartItems) {
             if (item.getProduct().getId() == product.getId()) {
-                // Товар уже есть в корзине, увеличиваем количество
+                // Товар уже есть
                 int newQuantity = item.getQuantity() + quantity;
                 
-                // Проверяем, достаточно ли товара на складе
+                // хватает ли на складе
                 if (product.getStockQuantity() < newQuantity) {
                     view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Недостаточно товара на складе");
                     return;
@@ -139,7 +124,7 @@ public class ClientController {
             }
         }
         
-        // Товара нет в корзине, добавляем новый
+        // Товара нет в корзине
         OrderItem newItem = new OrderItem();
         newItem.setProduct(product);
         newItem.setQuantity(quantity);
@@ -149,29 +134,20 @@ public class ClientController {
         updateCartView();
     }
 
-    /**
-     * Удалить товар из корзины
-     * 
-     * @param item товар для удаления
-     */
+    //Делитнуть из корзины
+    //item товар кот хотим удалить
     public void removeFromCart(OrderItem item) {
         cartItems.remove(item);
         updateCartView();
     }
 
-    /**
-     * Обновить представление корзины
-     */
+    //обнова корзины
     private void updateCartView() {
         double totalPrice = calculateTotalPrice();
         view.updateCartTable(cartItems, totalPrice);
     }
 
-    /**
-     * Рассчитать общую стоимость товаров в корзине
-     * 
-     * @return общая стоимость товаров в корзине
-     */
+    //рассчет суммы
     private double calculateTotalPrice() {
         double total = 0.0;
         
@@ -179,28 +155,26 @@ public class ClientController {
             total += item.getPrice() * item.getQuantity();
         }
         
-        // Применяем скидку пользователя
+        // делаем скидку
         total = total * (1 - currentUser.getDiscount());
         
-        // Применяем дополнительную скидку в зависимости от суммы заказа
+        // применяем доп скидку 
         if (total > 5000) {
-            // Если сумма заказа больше 5000 руб., применяем дополнительную скидку 5%
+            // поменять!!!!
             total = total * 0.95;
         }
         
         return total;
     }
     
-    /**
-     * Показать диалог подтверждения заказа
-     */
+    //окно подтверждение заказа
     public void showOrderConfirmationDialog() {
         if (cartItems.isEmpty()) {
             view.showAlert(Alert.AlertType.WARNING, "Предупреждение", "Корзина пуста");
             return;
         }
         
-        // Создаем новое окно для подтверждения заказа
+        // Создание окна
         Stage confirmStage = new Stage();
         confirmStage.setTitle("Подтверждение заказа");
         confirmStage.initModality(Modality.WINDOW_MODAL);
@@ -209,11 +183,11 @@ public class ClientController {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
         
-        // Информация о заказе
+        // Инфа о заказе
         Label titleLabel = new Label("Подтверждение заказа");
         titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         
-        // Таблица товаров в заказе
+        // Таблица товаров в зак
         TableView<OrderItem> itemsTable = new TableView<>();
         
         // Столбец с названием товара
@@ -239,13 +213,13 @@ public class ClientController {
             return new javafx.beans.property.SimpleDoubleProperty(subtotal).asObject();
         });
         
-        // Добавляем столбцы в таблицу
+        // add солбцы в табл
         itemsTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, subtotalColumn);
         
-        // Заполняем таблицу данными
+        // Заполняем таблицу 
         itemsTable.setItems(FXCollections.observableArrayList(cartItems));
         
-        // Информация о скидке и итоговой сумме
+        // Инфа о скидке и сумме в итоге
         double totalPrice = calculateTotalPrice();
         double originalPrice = 0.0;
         for (OrderItem item : cartItems) {
@@ -287,23 +261,21 @@ public class ClientController {
         confirmStage.show();
     }
 
-    /**
-     * Оформить заказ
-     */
+    //оформить заказ
     public void checkout() {
         if (cartItems.isEmpty()) {
             view.showAlert(Alert.AlertType.WARNING, "Предупреждение", "Корзина пуста");
             return;
         }
         
-        // Создаем новый заказ
+        // создатьь новый заказ
         Order order = new Order();
         order.setUser(currentUser);
         order.setOrderDate(LocalDateTime.now());
         order.setTotalCost(calculateTotalPrice());
         order.setStatus("В обработке");
         
-        // Добавляем товары в заказ
+        // Добавить товары в заказ
         List<OrderItem> items = new ArrayList<>(cartItems);
         for (OrderItem item : items) {
             item.setOrder(order);
@@ -311,20 +283,20 @@ public class ClientController {
         
         order.setItems(items);
         
-        // Сохраняем заказ в базе данных
+        // сохраняем заказ в базе данных
         boolean success = orderDAO.addOrder(order);
         
         if (success) {
-            // Проверяем, нужно ли обновить скидку пользователя
+            // проверка скидки
             if (order.getTotalCost() > 5000 && currentUser.getDiscount() == 0) {
-                // Пользователь становится "постоянным клиентом" и получает скидку 2%
+                // становится постоянным клиентом и скидку
                 currentUser.setDiscount(0.02);
                 userDAO.updateUser(currentUser);
             }
             
             view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Заказ успешно оформлен");
             
-            // Очищаем корзину
+            // del корзину
             cartItems.clear();
             updateCartView();
             
@@ -335,13 +307,10 @@ public class ClientController {
         }
     }
 
-    /**
-     * Показать подробности заказа
-     * 
-     * @param order заказ для просмотра
-     */
+    //подробности заказа
+    //order заказ для просм
     public void showOrderDetails(Order order) {
-        // Создаем новое окно для отображения подробностей заказа
+        // окно для отображения подробностей заказа
         Stage detailsStage = new Stage();
         detailsStage.setTitle("Подробности заказа №" + order.getId());
         detailsStage.initModality(Modality.WINDOW_MODAL);
@@ -350,7 +319,7 @@ public class ClientController {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
         
-        // Информация о заказе
+        // Инфа о заказе
         GridPane infoGrid = new GridPane();
         infoGrid.setHgap(10);
         infoGrid.setVgap(10);
@@ -371,10 +340,10 @@ public class ClientController {
         infoGrid.add(new Label("Итоговая стоимость:"), 0, 4);
         infoGrid.add(new Label(String.format("%.2f руб.", order.getTotalCost())), 1, 4);
         
-        // Таблица товаров в заказе
+        // Таблица товаров в зак
         TableView<OrderItem> itemsTable = new TableView<>();
         
-        // Столбец с названием товара
+        // солбц с названием товара
         TableColumn<OrderItem, String> nameColumn = new TableColumn<>("Название");
         nameColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
@@ -382,28 +351,28 @@ public class ClientController {
         });
         nameColumn.setPrefWidth(200);
         
-        // Столбец с ценой товара
+        // солбц с ценой товара
         TableColumn<OrderItem, Double> priceColumn = new TableColumn<>("Цена (руб.)");
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
         
-        // Столбец с количеством товара
+        // солбц с количеством товара
         TableColumn<OrderItem, Integer> quantityColumn = new TableColumn<>("Количество");
         quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         
-        // Столбец с суммой
+        // солбц с суммой
         TableColumn<OrderItem, Double> subtotalColumn = new TableColumn<>("Сумма (руб.)");
         subtotalColumn.setCellValueFactory(cellData -> {
             double subtotal = cellData.getValue().getPrice() * cellData.getValue().getQuantity();
             return new javafx.beans.property.SimpleDoubleProperty(subtotal).asObject();
         });
         
-        // Добавляем столбцы в таблицу
+        // Добавляем солбцы в таблицу
         itemsTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, subtotalColumn);
         
-        // Заполняем таблицу данными
+        // Заполняем таблицу
         itemsTable.setItems(FXCollections.observableArrayList(order.getItems()));
         
-        // Кнопка "Закрыть"
+        // кнопка закрыть
         Button closeButton = new Button("Закрыть");
         closeButton.setOnAction(e -> detailsStage.close());
         
@@ -414,14 +383,12 @@ public class ClientController {
         detailsStage.show();
     }
 
-    /**
-     * Обработать выход из системы
-     */
+    //выход из системы
     public void handleLogout() {
-        // Закрываем главное окно
+        // закрываем главное окно
         primaryStage.close();
         
-        // Открываем окно входа
+        // открываем окно входа
         LoginView loginView = new LoginView();
         loginView.start(new Stage());
     }

@@ -18,9 +18,7 @@ import com.olineshop.model.Order;
 import com.olineshop.model.Product;
 import com.olineshop.model.User;
 
-/**
- * Класс представления главного окна административной части приложения
- */
+//Класс представления главного окна административной части приложения
 public class MainAdminView {
     private AdminController controller;
     private TableView<Product> productTable;
@@ -33,66 +31,50 @@ public class MainAdminView {
     private TextField productUnitField;
     private TextField productQuantityField;
 
-    /**
-     * Запустить главное окно административной части
-     * 
-     * @param primaryStage главное окно приложения
-     */
+    //Запустить главное окно административной части
+    //primaryStage главное окно приложения
     public void start(Stage primaryStage) {
         this.controller = new AdminController(this, primaryStage);
 
         primaryStage.setTitle("Интернет-магазин - Администратор");
 
-        // Создаем основной контейнер
         BorderPane borderPane = new BorderPane();
         
-        // Верхняя панель с информацией
         HBox topPanel = createTopPanel();
         borderPane.setTop(topPanel);
         
-        // Создаем вкладки
         TabPane tabPane = new TabPane();
         
-        // Вкладка "Управление товарами"
         Tab productsTab = new Tab("Управление товарами");
         productsTab.setClosable(false);
         VBox productsBox = createProductsTab();
         productsTab.setContent(productsBox);
         
-        // Вкладка "Управление пользователями"
         Tab usersTab = new Tab("Управление пользователями");
         usersTab.setClosable(false);
         VBox usersBox = createUsersTab();
         usersTab.setContent(usersBox);
         
-        // Вкладка "Управление заказами"
         Tab ordersTab = new Tab("Управление заказами");
         ordersTab.setClosable(false);
         VBox ordersBox = createOrdersTab();
         ordersTab.setContent(ordersBox);
         
-        // Добавляем вкладки в панель
         tabPane.getTabs().addAll(productsTab, usersTab, ordersTab);
         
-        // Добавляем панель вкладок в центр основного контейнера
         borderPane.setCenter(tabPane);
 
-        // Создаем сцену
         Scene scene = new Scene(borderPane, 900, 700);
         primaryStage.setScene(scene);
         primaryStage.show();
         
-        // Загружаем данные
         controller.loadProducts();
         controller.loadUsers();
         controller.loadOrders();
     }
 
-    /**
-     * Создать верхнюю панель
-     * 
-     * @return верхняя панель
-     */
+    //Создать верхнюю панель
+    //return верхняя панель
     private HBox createTopPanel() {
         HBox topPanel = new HBox(10);
         topPanel.setPadding(new Insets(10, 10, 10, 10));
@@ -108,11 +90,8 @@ public class MainAdminView {
         return topPanel;
     }
 
-    /**
-     * Создать вкладку "Управление товарами"
-     * 
-     * @return контейнер с содержимым вкладки "Управление товарами"
-     */
+    //Создать вкладку "Управление товарами"
+    //return контейнер с содержимым вкладки "Управление товарами"
     private VBox createProductsTab() {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
@@ -120,68 +99,55 @@ public class MainAdminView {
         Text title = new Text("Управление товарами");
         title.setFont(Font.font("Tahoma", FontWeight.NORMAL, 16));
         
-        // Создаем таблицу товаров
         productTable = new TableView<>();
         
-        // Столбец с ID товара
         TableColumn<Product, Integer> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         
-        // Столбец с названием товара
         TableColumn<Product, String> nameColumn = new TableColumn<>("Название");
         nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
         nameColumn.setPrefWidth(200);
         
-        // Столбец с ценой товара
         TableColumn<Product, Double> priceColumn = new TableColumn<>("Цена (руб.)");
         priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
         
-        // Столбец с единицей измерения
         TableColumn<Product, String> unitColumn = new TableColumn<>("Ед. изм.");
         unitColumn.setCellValueFactory(new PropertyValueFactory<>("unit"));
         
-        // Столбец с количеством на складе
         TableColumn<Product, Integer> stockColumn = new TableColumn<>("В наличии");
         stockColumn.setCellValueFactory(new PropertyValueFactory<>("stockQuantity"));
         
-        // Добавляем столбцы в таблицу
         productTable.getColumns().addAll(idColumn, nameColumn, priceColumn, unitColumn, stockColumn);
         
-        // Форма для добавления/редактирования товара
         GridPane formGrid = new GridPane();
         formGrid.setHgap(10);
         formGrid.setVgap(10);
         formGrid.setPadding(new Insets(10, 10, 10, 10));
         
-        // Название товара
         Label nameLabel = new Label("Название:");
         formGrid.add(nameLabel, 0, 0);
         
         productNameField = new TextField();
         formGrid.add(productNameField, 1, 0);
         
-        // Цена товара
         Label priceLabel = new Label("Цена (руб.):");
         formGrid.add(priceLabel, 0, 1);
         
         productPriceField = new TextField();
         formGrid.add(productPriceField, 1, 1);
         
-        // Единица измерения
         Label unitLabel = new Label("Ед. изм. (шт, кг, л):");
         formGrid.add(unitLabel, 0, 2);
         
         productUnitField = new TextField();
         formGrid.add(productUnitField, 1, 2);
         
-        // Количество на складе
         Label quantityLabel = new Label("Количество:");
         formGrid.add(quantityLabel, 0, 3);
         
         productQuantityField = new TextField();
         formGrid.add(productQuantityField, 1, 3);
         
-        // Панель с кнопками
         HBox buttonPanel = new HBox(10);
         
         Button addButton = new Button("Добавить");
@@ -234,7 +200,6 @@ public class MainAdminView {
         
         buttonPanel.getChildren().addAll(addButton, updateButton, deleteButton, clearButton);
         
-        // Обработчик выбора товара в таблице
         productTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
                 productNameField.setText(newSelection.getName());
@@ -249,11 +214,8 @@ public class MainAdminView {
         return vbox;
     }
 
-    /**
-     * Создать вкладку "Управление пользователями"
-     * 
-     * @return контейнер с содержимым вкладки "Управление пользователями"
-     */
+    //Создать вкладку "Управление пользователями"
+    //return контейнер с содержимым вкладки "Управление пользователями"
     private VBox createUsersTab() {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
@@ -261,53 +223,42 @@ public class MainAdminView {
         Text title = new Text("Управление пользователями");
         title.setFont(Font.font("Tahoma", FontWeight.NORMAL, 16));
         
-        // Создаем таблицу пользователей
         userTable = new TableView<>();
         
-        // Столбец с ID пользователя
         TableColumn<User, Integer> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         
-        // Столбец с логином пользователя
         TableColumn<User, String> loginColumn = new TableColumn<>("Логин");
         loginColumn.setCellValueFactory(new PropertyValueFactory<>("login"));
         
-        // Столбец с именем пользователя
         TableColumn<User, String> firstNameColumn = new TableColumn<>("Имя");
         firstNameColumn.setCellValueFactory(new PropertyValueFactory<>("firstName"));
         
-        // Столбец с фамилией пользователя
         TableColumn<User, String> lastNameColumn = new TableColumn<>("Фамилия");
         lastNameColumn.setCellValueFactory(new PropertyValueFactory<>("lastName"));
         
-        // Столбец с email пользователя
         TableColumn<User, String> emailColumn = new TableColumn<>("Email");
         emailColumn.setCellValueFactory(new PropertyValueFactory<>("email"));
         emailColumn.setPrefWidth(150);
         
-        // Столбец с телефоном пользователя
         TableColumn<User, String> phoneColumn = new TableColumn<>("Телефон");
         phoneColumn.setCellValueFactory(new PropertyValueFactory<>("phone"));
         
-        // Столбец со скидкой пользователя
         TableColumn<User, Double> discountColumn = new TableColumn<>("Скидка (%)");
         discountColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleDoubleProperty(
                     cellData.getValue().getDiscount() * 100).asObject();
         });
         
-        // Столбец с ролью пользователя
         TableColumn<User, String> roleColumn = new TableColumn<>("Роль");
         roleColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
                     cellData.getValue().getRole().getName());
         });
         
-        // Добавляем столбцы в таблицу
         userTable.getColumns().addAll(idColumn, loginColumn, firstNameColumn, lastNameColumn, 
                 emailColumn, phoneColumn, discountColumn, roleColumn);
         
-        // Панель с кнопками
         HBox buttonPanel = new HBox(10);
         
         Button viewDetailsButton = new Button("Подробнее");
@@ -337,11 +288,8 @@ public class MainAdminView {
         return vbox;
     }
 
-    /**
-     * Создать вкладку "Управление заказами"
-     * 
-     * @return контейнер с содержимым вкладки "Управление заказами"
-     */
+    //Создать вкладку "Управление заказами"
+    //return контейнер с содержимым вкладки "Управление заказами"
     private VBox createOrdersTab() {
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10, 10, 10, 10));
@@ -349,14 +297,11 @@ public class MainAdminView {
         Text title = new Text("Управление заказами");
         title.setFont(Font.font("Tahoma", FontWeight.NORMAL, 16));
         
-        // Создаем таблицу заказов
         orderTable = new TableView<>();
         
-        // Столбец с ID заказа
         TableColumn<Order, Integer> idColumn = new TableColumn<>("ID");
         idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         
-        // Столбец с пользователем
         TableColumn<Order, String> userColumn = new TableColumn<>("Пользователь");
         userColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
@@ -364,7 +309,6 @@ public class MainAdminView {
         });
         userColumn.setPrefWidth(150);
         
-        // Столбец с датой заказа
         TableColumn<Order, String> orderDateColumn = new TableColumn<>("Дата заказа");
         orderDateColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
@@ -372,7 +316,6 @@ public class MainAdminView {
         });
         orderDateColumn.setPrefWidth(150);
         
-        // Столбец с датой доставки
         TableColumn<Order, String> deliveryDateColumn = new TableColumn<>("Дата доставки");
         deliveryDateColumn.setCellValueFactory(cellData -> {
             java.time.LocalDateTime deliveryDate = cellData.getValue().getDeliveryDate();
@@ -381,19 +324,15 @@ public class MainAdminView {
         });
         deliveryDateColumn.setPrefWidth(150);
         
-        // Столбец с общей стоимостью
         TableColumn<Order, Double> totalCostColumn = new TableColumn<>("Сумма (руб.)");
         totalCostColumn.setCellValueFactory(new PropertyValueFactory<>("totalCost"));
         
-        // Столбец со статусом
         TableColumn<Order, String> statusColumn = new TableColumn<>("Статус");
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
         
-        // Добавляем столбцы в таблицу
         orderTable.getColumns().addAll(idColumn, userColumn, orderDateColumn, 
                 deliveryDateColumn, totalCostColumn, statusColumn);
         
-        // Панель с кнопками
         HBox buttonPanel = new HBox(10);
         
         Button viewDetailsButton = new Button("Подробнее");
@@ -433,9 +372,7 @@ public class MainAdminView {
         return vbox;
     }
 
-    /**
-     * Очистить форму товара
-     */
+    //Очистить форму товара
     private void clearProductForm() {
         productNameField.clear();
         productPriceField.clear();
@@ -444,40 +381,25 @@ public class MainAdminView {
         productTable.getSelectionModel().clearSelection();
     }
 
-    /**
-     * Обновить таблицу товаров
-     * 
-     * @param products список товаров
-     */
+    //Обновить таблицу товаров
+    //products список товаров
     public void updateProductTable(ObservableList<Product> products) {
         productTable.setItems(products);
     }
 
-    /**
-     * Обновить таблицу пользователей
-     * 
-     * @param users список пользователей
-     */
+    //Обновить таблицу пользователей
+    //users список пользователей
     public void updateUserTable(ObservableList<User> users) {
         userTable.setItems(users);
     }
 
-    /**
-     * Обновить таблицу заказов
-     * 
-     * @param orders список заказов
-     */
+    //Обновить таблицу заказов
+    //orders список заказов
     public void updateOrderTable(ObservableList<Order> orders) {
         orderTable.setItems(orders);
     }
 
-    /**
-     * Показать диалоговое окно с сообщением
-     * 
-     * @param alertType тип диалогового окна
-     * @param title заголовок окна
-     * @param message сообщение
-     */
+    //Показать диалоговое окно с сообщением
     public void showAlert(Alert.AlertType alertType, String title, String message) {
         Alert alert = new Alert(alertType);
         alert.setTitle(title);

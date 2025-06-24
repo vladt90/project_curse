@@ -10,43 +10,42 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Класс для работы с ролями в базе данных
- */
+//Класс для работы с ролями в базе данных
+
 public class RoleDAO {
 
-    /**
-     * Получить все роли из базы данных
-     * 
-     * @return список ролей
-     */
+    //Получить все роли из базы данных
+    //return список ролей
     public List<Role> getAllRoles() {
         List<Role> roles = new ArrayList<>();
         String sql = "SELECT * FROM roles";
+        System.out.println("Получение всех ролей из базы данных");
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                roles.add(new Role(
+                Role role = new Role(
                         rs.getInt("id"),
-                        rs.getString("name")));
+                        rs.getString("name"));
+                roles.add(role);
+                System.out.println("Найдена роль: ID=" + role.getId() + ", Название=" + role.getName());
             }
         } catch (SQLException e) {
+            System.out.println("Ошибка при получении ролей: " + e.getMessage());
             e.printStackTrace();
         }
+        System.out.println("Всего найдено ролей: " + roles.size());
         return roles;
     }
 
-    /**
-     * Получить роль по идентификатору
-     * 
-     * @param id идентификатор роли
-     * @return роль или null, если роль не найдена
-     */
+    //Получить роль по идентификатору
+    //id идентификатор роли
+    //return роль или null, если роль не найдена
     public Role getRoleById(int id) {
         String sql = "SELECT * FROM roles WHERE id = ?";
+        System.out.println("Получение роли по ID: " + id);
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -54,25 +53,28 @@ public class RoleDAO {
             pstmt.setInt(1, id);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return new Role(
+                    Role role = new Role(
                             rs.getInt("id"),
                             rs.getString("name"));
+                    System.out.println("Найдена роль: ID=" + role.getId() + ", Название=" + role.getName());
+                    return role;
+                } else {
+                    System.out.println("Роль с ID=" + id + " не найдена");
                 }
             }
         } catch (SQLException e) {
+            System.out.println("Ошибка при получении роли по ID: " + e.getMessage());
             e.printStackTrace();
         }
         return null;
     }
 
-    /**
-     * Получить роль по названию
-     * 
-     * @param name название роли
-     * @return роль или null, если роль не найдена
-     */
+    //Получить роль по названию
+    //name название роли
+    //return роль или null, если роль не найдена
     public Role getRoleByName(String name) {
         String sql = "SELECT * FROM roles WHERE name = ?";
+        System.out.println("Получение роли по названию: " + name);
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -80,23 +82,25 @@ public class RoleDAO {
             pstmt.setString(1, name);
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return new Role(
+                    Role role = new Role(
                             rs.getInt("id"),
                             rs.getString("name"));
+                    System.out.println("Найдена роль: ID=" + role.getId() + ", Название=" + role.getName());
+                    return role;
+                } else {
+                    System.out.println("Роль с названием '" + name + "' не найдена");
                 }
             }
         } catch (SQLException e) {
+            System.out.println("Ошибка при получении роли по названию: " + e.getMessage());
             e.printStackTrace();
         }
         return null;
     }
 
-    /**
-     * Добавить новую роль в базу данных
-     * 
-     * @param role роль для добавления
-     * @return true, если роль успешно добавлена, иначе false
-     */
+    //Добавить новую роль в базу данных
+    //role роль для добавления
+    //return true, если роль успешно добавлена, иначе false
     public boolean addRole(Role role) {
         String sql = "INSERT INTO roles (name) VALUES (?)";
 
@@ -112,12 +116,9 @@ public class RoleDAO {
         }
     }
 
-    /**
-     * Обновить роль в базе данных
-     * 
-     * @param role роль для обновления
-     * @return true, если роль успешно обновлена, иначе false
-     */
+    //Обновить роль в базе данных
+    //role роль для обновления
+    //return true, если роль успешно обновлена, иначе false
     public boolean updateRole(Role role) {
         String sql = "UPDATE roles SET name = ? WHERE id = ?";
 
@@ -134,12 +135,9 @@ public class RoleDAO {
         }
     }
 
-    /**
-     * Удалить роль из базы данных
-     * 
-     * @param id идентификатор роли для удаления
-     * @return true, если роль успешно удалена, иначе false
-     */
+    //Удалить роль из базы данных
+    //id идентификатор роли для удаления
+    //return true, если роль успешно удалена, иначе false
     public boolean deleteRole(int id) {
         String sql = "DELETE FROM roles WHERE id = ?";
 
