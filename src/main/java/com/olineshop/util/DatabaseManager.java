@@ -9,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.stream.Collectors;
+import java.sql.DatabaseMetaData;
 
 //Singleton
 public class DatabaseManager {
@@ -67,6 +68,12 @@ public class DatabaseManager {
                     // Проверяем соединение с базой данных
                     if (connection.isValid(5)) {
                         System.out.println("Соединение с БД действительно");
+                        
+                        // Проверяем и исправляем структуру базы данных
+                        checkAndFixDatabaseStructure(connection);
+                        
+                        // Выводим полную информацию о структуре базы данных
+                        printDatabaseInfo(connection);
                     } else {
                         System.out.println("Соединение с БД недействительно");
                     }
@@ -248,6 +255,314 @@ public class DatabaseManager {
                 System.out.println("Ошибка при закрытии соединения: " + e.getMessage());
                 e.printStackTrace();
             }
+        }
+    }
+
+    public static void testConnection() {
+        System.out.println("Тестирование соединения с базой данных...");
+        
+        // Пробуем подключиться на стандартном порту 3306
+        try {
+            System.out.println("Попытка подключения к MySQL на порту 3306...");
+            Connection testConn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC",
+                USER, PASSWORD
+            );
+            System.out.println("Успешное подключение к MySQL на порту 3306");
+            testConn.close();
+        } catch (SQLException e) {
+            System.out.println("Не удалось подключиться к MySQL на порту 3306: " + e.getMessage());
+        }
+        
+        // Пробуем подключиться на альтернативном порту 3307 (XAMPP)
+        try {
+            System.out.println("Попытка подключения к MySQL на порту 3307...");
+            Connection testConn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3307?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC",
+                USER, PASSWORD
+            );
+            System.out.println("Успешное подключение к MySQL на порту 3307");
+            testConn.close();
+        } catch (SQLException e) {
+            System.out.println("Не удалось подключиться к MySQL на порту 3307: " + e.getMessage());
+        }
+        
+        // Проверяем наличие базы данных на порту 3306
+        try {
+            System.out.println("Проверка наличия базы данных " + DB_NAME + " на порту 3306...");
+            Connection testConn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC",
+                USER, PASSWORD
+            );
+            
+            ResultSet rs = testConn.getMetaData().getCatalogs();
+            boolean dbExists = false;
+            while (rs.next()) {
+                String dbName = rs.getString(1);
+                if (DB_NAME.equals(dbName)) {
+                    dbExists = true;
+                    break;
+                }
+            }
+            System.out.println("База данных " + DB_NAME + (dbExists ? " существует" : " не существует") + " на порту 3306");
+            
+            // Если база данных существует, проверяем структуру таблиц
+            if (dbExists) {
+                checkDatabaseStructure(testConn, DB_NAME);
+            }
+            
+            testConn.close();
+        } catch (SQLException e) {
+            System.out.println("Не удалось проверить наличие базы данных на порту 3306: " + e.getMessage());
+        }
+        
+        // Проверяем наличие базы данных на порту 3307
+        try {
+            System.out.println("Проверка наличия базы данных " + DB_NAME + " на порту 3307...");
+            Connection testConn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3307?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC",
+                USER, PASSWORD
+            );
+            
+            ResultSet rs = testConn.getMetaData().getCatalogs();
+            boolean dbExists = false;
+            while (rs.next()) {
+                String dbName = rs.getString(1);
+                if (DB_NAME.equals(dbName)) {
+                    dbExists = true;
+                    break;
+                }
+            }
+            System.out.println("База данных " + DB_NAME + (dbExists ? " существует" : " не существует") + " на порту 3307");
+            
+            // Если база данных существует, проверяем структуру таблиц
+            if (dbExists) {
+                checkDatabaseStructure(testConn, DB_NAME);
+            }
+            
+            testConn.close();
+        } catch (SQLException e) {
+            System.out.println("Не удалось проверить наличие базы данных на порту 3307: " + e.getMessage());
+        }
+    }
+
+    private static void checkDatabaseStructure(Connection conn, String dbName) {
+        try {
+            System.out.println("Проверка структуры таблиц в базе данных " + dbName + "...");
+            
+            // Переключаемся на нужную базу данных
+            Statement stmt = conn.createStatement();
+            stmt.execute("USE " + dbName);
+            
+            // Проверяем наличие таблиц
+            String[] tables = {"roles", "users", "products", "orders", "order_items"};
+            for (String table : tables) {
+                ResultSet rs = stmt.executeQuery("SHOW TABLES LIKE '" + table + "'");
+                boolean tableExists = rs.next();
+                System.out.println("Таблица '" + table + "' " + (tableExists ? "существует" : "НЕ существует"));
+                
+                if (tableExists) {
+                    // Проверяем структуру таблицы
+                    ResultSet columns = stmt.executeQuery("DESCRIBE " + table);
+                    System.out.println("Структура таблицы '" + table + "':");
+                    while (columns.next()) {
+                        String columnName = columns.getString("Field");
+                        String columnType = columns.getString("Type");
+                        String isNull = columns.getString("Null");
+                        String key = columns.getString("Key");
+                        String defaultValue = columns.getString("Default");
+                        System.out.println("  - " + columnName + " (" + columnType + ")" + 
+                                          ", Null: " + isNull + ", Key: " + key + 
+                                          ", Default: " + defaultValue);
+                    }
+                    
+                    // Проверяем количество записей в таблице
+                    ResultSet count = stmt.executeQuery("SELECT COUNT(*) FROM " + table);
+                    if (count.next()) {
+                        System.out.println("  Количество записей в таблице '" + table + "': " + count.getInt(1));
+                    }
+                }
+            }
+            
+            stmt.close();
+        } catch (SQLException e) {
+            System.out.println("Ошибка при проверке структуры базы данных: " + e.getMessage());
+        }
+    }
+
+    // Метод для вывода полной информации о структуре базы данных
+    private static void printDatabaseInfo(Connection conn) {
+        try {
+            System.out.println("\n=== ПОЛНАЯ ИНФОРМАЦИЯ О СТРУКТУРЕ БАЗЫ ДАННЫХ ===");
+            
+            // Получаем метаданные
+            DatabaseMetaData metaData = conn.getMetaData();
+            
+            // Информация о базе данных
+            System.out.println("Драйвер БД: " + metaData.getDriverName() + " " + metaData.getDriverVersion());
+            System.out.println("URL подключения: " + metaData.getURL());
+            System.out.println("Имя пользователя: " + metaData.getUserName());
+            System.out.println("Продукт БД: " + metaData.getDatabaseProductName() + " " + metaData.getDatabaseProductVersion());
+            
+            // Получаем список таблиц
+            System.out.println("\n--- ТАБЛИЦЫ ---");
+            try (ResultSet tables = metaData.getTables(null, null, "%", new String[]{"TABLE"})) {
+                while (tables.next()) {
+                    String tableName = tables.getString("TABLE_NAME");
+                    System.out.println("\nТаблица: " + tableName);
+                    
+                    // Получаем список столбцов для таблицы
+                    try (ResultSet columns = metaData.getColumns(null, null, tableName, null)) {
+                        System.out.println("  Столбцы:");
+                        while (columns.next()) {
+                            String columnName = columns.getString("COLUMN_NAME");
+                            String typeName = columns.getString("TYPE_NAME");
+                            int columnSize = columns.getInt("COLUMN_SIZE");
+                            String nullable = columns.getInt("NULLABLE") == DatabaseMetaData.columnNullable ? "NULL" : "NOT NULL";
+                            String defaultValue = columns.getString("COLUMN_DEF");
+                            
+                            System.out.println("    " + columnName + " - " + typeName + 
+                                              "(" + columnSize + ") " + nullable + 
+                                              (defaultValue != null ? " DEFAULT " + defaultValue : ""));
+                        }
+                    }
+                    
+                    // Получаем первичный ключ
+                    try (ResultSet primaryKeys = metaData.getPrimaryKeys(null, null, tableName)) {
+                        if (primaryKeys.next()) {
+                            System.out.println("  Первичный ключ: " + primaryKeys.getString("COLUMN_NAME"));
+                        }
+                    }
+                    
+                    // Получаем внешние ключи
+                    try (ResultSet foreignKeys = metaData.getImportedKeys(null, null, tableName)) {
+                        if (foreignKeys.next()) {
+                            System.out.println("  Внешние ключи:");
+                            do {
+                                String fkColumnName = foreignKeys.getString("FKCOLUMN_NAME");
+                                String pkTableName = foreignKeys.getString("PKTABLE_NAME");
+                                String pkColumnName = foreignKeys.getString("PKCOLUMN_NAME");
+                                
+                                System.out.println("    " + fkColumnName + " -> " + 
+                                                  pkTableName + "." + pkColumnName);
+                            } while (foreignKeys.next());
+                        }
+                    }
+                    
+                    // Получаем количество записей
+                    try (Statement stmt = conn.createStatement();
+                         ResultSet count = stmt.executeQuery("SELECT COUNT(*) FROM " + tableName)) {
+                        if (count.next()) {
+                            System.out.println("  Количество записей: " + count.getInt(1));
+                        }
+                    }
+                }
+            }
+            
+            System.out.println("\n=== КОНЕЦ ИНФОРМАЦИИ О СТРУКТУРЕ БАЗЫ ДАННЫХ ===\n");
+        } catch (SQLException e) {
+            System.out.println("Ошибка при получении информации о структуре базы данных: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Метод для проверки и исправления структуры базы данных
+    private static void checkAndFixDatabaseStructure(Connection conn) {
+        System.out.println("\n=== ПРОВЕРКА И ИСПРАВЛЕНИЕ СТРУКТУРЫ БАЗЫ ДАННЫХ ===");
+        
+        try {
+            // Проверяем существование таблиц
+            String[] tables = {"roles", "users", "products", "orders", "order_items"};
+            boolean allTablesExist = true;
+            
+            for (String table : tables) {
+                try (ResultSet rs = conn.getMetaData().getTables(null, null, table, null)) {
+                    if (!rs.next()) {
+                        System.out.println("Таблица '" + table + "' не существует!");
+                        allTablesExist = false;
+                    } else {
+                        System.out.println("Таблица '" + table + "' существует");
+                    }
+                }
+            }
+            
+            if (!allTablesExist) {
+                System.out.println("Не все необходимые таблицы существуют. Выполняем скрипт создания схемы...");
+                executeSqlScript(conn, "db/schema.sql");
+                System.out.println("Скрипт создания схемы выполнен");
+                return;
+            }
+            
+            // Проверяем структуру таблицы order_items
+            System.out.println("Проверка структуры таблицы order_items...");
+            
+            // Проверяем наличие внешних ключей
+            boolean hasOrderFk = false;
+            boolean hasProductFk = false;
+            
+            try (ResultSet fks = conn.getMetaData().getImportedKeys(null, null, "order_items")) {
+                while (fks.next()) {
+                    String pkTableName = fks.getString("PKTABLE_NAME");
+                    String fkColumnName = fks.getString("FKCOLUMN_NAME");
+                    
+                    if ("orders".equals(pkTableName) && "order_id".equals(fkColumnName)) {
+                        hasOrderFk = true;
+                        System.out.println("Внешний ключ order_id -> orders.id существует");
+                    }
+                    
+                    if ("products".equals(pkTableName) && "product_id".equals(fkColumnName)) {
+                        hasProductFk = true;
+                        System.out.println("Внешний ключ product_id -> products.id существует");
+                    }
+                }
+            }
+            
+            // Если отсутствуют внешние ключи, пересоздаем таблицу
+            if (!hasOrderFk || !hasProductFk) {
+                System.out.println("Отсутствуют необходимые внешние ключи в таблице order_items. Пересоздаем таблицу...");
+                
+                // Создаем временную таблицу для сохранения данных
+                try (Statement stmt = conn.createStatement()) {
+                    // Создаем временную таблицу
+                    stmt.execute("CREATE TABLE IF NOT EXISTS `order_items_temp` (" +
+                                 "`id` INT AUTO_INCREMENT PRIMARY KEY," +
+                                 "`order_id` INT NOT NULL," +
+                                 "`product_id` INT NOT NULL," +
+                                 "`quantity` INT NOT NULL," +
+                                 "`price` DECIMAL(10, 2) NOT NULL)");
+                    
+                    // Копируем данные
+                    stmt.execute("INSERT INTO `order_items_temp` SELECT * FROM `order_items`");
+                    
+                    // Удаляем старую таблицу
+                    stmt.execute("DROP TABLE IF EXISTS `order_items`");
+                    
+                    // Создаем новую таблицу с правильными внешними ключами
+                    stmt.execute("CREATE TABLE IF NOT EXISTS `order_items` (" +
+                                 "`id` INT AUTO_INCREMENT PRIMARY KEY," +
+                                 "`order_id` INT NOT NULL," +
+                                 "`product_id` INT NOT NULL," +
+                                 "`quantity` INT NOT NULL," +
+                                 "`price` DECIMAL(10, 2) NOT NULL," +
+                                 "FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`) ON DELETE CASCADE," +
+                                 "FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE)");
+                    
+                    // Восстанавливаем данные
+                    stmt.execute("INSERT INTO `order_items` SELECT * FROM `order_items_temp`");
+                    
+                    // Удаляем временную таблицу
+                    stmt.execute("DROP TABLE IF EXISTS `order_items_temp`");
+                    
+                    System.out.println("Таблица order_items успешно пересоздана с корректными внешними ключами");
+                }
+            }
+            
+            System.out.println("=== ПРОВЕРКА И ИСПРАВЛЕНИЕ СТРУКТУРЫ БАЗЫ ДАННЫХ ЗАВЕРШЕНЫ ===\n");
+        } catch (SQLException e) {
+            System.out.println("Ошибка при проверке и исправлении структуры базы данных: " + e.getMessage());
+            System.out.println("SQL State: " + e.getSQLState());
+            System.out.println("Error Code: " + e.getErrorCode());
+            e.printStackTrace();
         }
     }
 } 

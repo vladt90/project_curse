@@ -270,26 +270,88 @@ public class MainClientView {
         
         TableColumn<Order, String> orderDateColumn = new TableColumn<>("Дата заказа");
         orderDateColumn.setCellValueFactory(cellData -> {
-            return new javafx.beans.property.SimpleStringProperty(
-                    cellData.getValue().getOrderDate().toString());
+            LocalDateTime date = cellData.getValue().getOrderDate();
+            String formattedDate = date.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+            return new javafx.beans.property.SimpleStringProperty(formattedDate);
         });
         orderDateColumn.setPrefWidth(150);
         
         TableColumn<Order, String> deliveryDateColumn = new TableColumn<>("Дата доставки");
         deliveryDateColumn.setCellValueFactory(cellData -> {
             LocalDateTime deliveryDate = cellData.getValue().getDeliveryDate();
-            return new javafx.beans.property.SimpleStringProperty(
-                    deliveryDate != null ? deliveryDate.toString() : "Не указана");
+            if (deliveryDate != null) {
+                String formattedDate = deliveryDate.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+                return new javafx.beans.property.SimpleStringProperty(formattedDate);
+            } else {
+                return new javafx.beans.property.SimpleStringProperty("Не указана");
+            }
         });
         deliveryDateColumn.setPrefWidth(150);
         
-        TableColumn<Order, Double> totalCostColumn = new TableColumn<>("Сумма (руб.)");
-        totalCostColumn.setCellValueFactory(new PropertyValueFactory<>("totalCost"));
+        TableColumn<Order, String> totalCostColumn = new TableColumn<>("Сумма (руб.)");
+        totalCostColumn.setCellValueFactory(cellData -> {
+            double cost = cellData.getValue().getTotalCost();
+            return new javafx.beans.property.SimpleStringProperty(String.format("%.2f", cost));
+        });
         
         TableColumn<Order, String> statusColumn = new TableColumn<>("Статус");
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
         
+        // Добавляем цветовую индикацию статуса
+        statusColumn.setCellFactory(column -> {
+            return new TableCell<Order, String>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    
+                    if (item == null || empty) {
+                        setText(null);
+                        setStyle("");
+                    } else {
+                        setText(item);
+                        
+                        // Устанавливаем цвет в зависимости от статуса
+                        switch (item.toLowerCase()) {
+                            case "новый":
+                                setStyle("-fx-text-fill: blue;");
+                                break;
+                            case "в обработке":
+                                setStyle("-fx-text-fill: orange;");
+                                break;
+                            case "доставляется":
+                                setStyle("-fx-text-fill: purple;");
+                                break;
+                            case "доставлен":
+                                setStyle("-fx-text-fill: green;");
+                                break;
+                            case "отменен":
+                                setStyle("-fx-text-fill: red;");
+                                break;
+                            default:
+                                setStyle("");
+                                break;
+                        }
+                    }
+                }
+            };
+        });
+        
         orderHistoryTable.getColumns().addAll(idColumn, orderDateColumn, deliveryDateColumn, totalCostColumn, statusColumn);
+        
+        // Добавляем обработчик двойного клика
+        orderHistoryTable.setRowFactory(tv -> {
+            TableRow<Order> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                    Order order = row.getItem();
+                    controller.showOrderDetails(order);
+                }
+            });
+            return row;
+        });
+        
+        HBox buttonPanel = new HBox(10);
+        buttonPanel.setPadding(new Insets(5, 0, 0, 0));
         
         Button detailsButton = new Button("Подробности заказа");
         detailsButton.setOnAction(e -> {
@@ -301,7 +363,12 @@ public class MainClientView {
             }
         });
         
-        vbox.getChildren().addAll(title, orderHistoryTable, detailsButton);
+        Button refreshButton = new Button("Обновить");
+        refreshButton.setOnAction(e -> controller.loadOrderHistory());
+        
+        buttonPanel.getChildren().addAll(detailsButton, refreshButton);
+        
+        vbox.getChildren().addAll(title, orderHistoryTable, buttonPanel);
         
         return vbox;
     }
@@ -324,6 +391,11 @@ public class MainClientView {
     //orders список заказов
     public void updateOrderHistoryTable(ObservableList<Order> orders) {
         orderHistoryTable.setItems(orders);
+        
+        // Показываем сообщение, если у пользователя нет заказов
+        if (orders == null || orders.isEmpty()) {
+            orderHistoryTable.setPlaceholder(new Label("У вас пока нет заказов"));
+        }
     }
 
     //Показать диалоговое окно с сообщением

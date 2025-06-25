@@ -101,61 +101,131 @@ public class OrderDAO {
     //order заказ для добавления
     //return true, если заказ успешно добавлен, иначе false
     public boolean addOrder(Order order) {
+        // Проверка входных данных
+        if (order == null) {
+            System.out.println("Ошибка: передан null-заказ");
+            return false;
+        }
+        
+        if (order.getUser() == null) {
+            System.out.println("Ошибка: пользователь не указан в заказе");
+            return false;
+        }
+        
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            System.out.println("Ошибка: список товаров в заказе пуст");
+            return false;
+        }
+        
         // Сбрасываем соединение перед добавлением заказа
         com.olineshop.util.DatabaseManager.resetConnectionStatus();
         
-        String sql = "INSERT INTO orders (user_id, order_date, delivery_date, total_price, status) VALUES (?, ?, ?, ?, ?)";
-
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
+        String sql = "INSERT INTO orders (user_id, order_date, delivery_date, total_cost, status) VALUES (?, ?, ?, ?, ?)";
+        Connection conn = null;
+        
+        try {
+            System.out.println("Получение соединения с базой данных для добавления заказа...");
+            conn = DatabaseManager.getConnection();
+            
             if (conn == null) {
                 System.out.println("Ошибка: не удалось получить соединение с базой данных");
                 return false;
             }
+            
+            System.out.println("Соединение с базой данных получено успешно");
+            
+            // Начинаем транзакцию
+            System.out.println("Начало транзакции...");
+            conn.setAutoCommit(false);
+            
+            try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                pstmt.setInt(1, order.getUser().getId());
+                pstmt.setTimestamp(2, Timestamp.valueOf(order.getOrderDate()));
+                
+                if (order.getDeliveryDate() != null) {
+                    pstmt.setTimestamp(3, Timestamp.valueOf(order.getDeliveryDate()));
+                } else {
+                    pstmt.setNull(3, Types.TIMESTAMP);
+                }
+                
+                pstmt.setDouble(4, order.getTotalCost());
+                pstmt.setString(5, order.getStatus());
 
-            pstmt.setInt(1, order.getUser().getId());
-            pstmt.setTimestamp(2, Timestamp.valueOf(order.getOrderDate()));
-            
-            if (order.getDeliveryDate() != null) {
-                pstmt.setTimestamp(3, Timestamp.valueOf(order.getDeliveryDate()));
-            } else {
-                pstmt.setNull(3, Types.TIMESTAMP);
-            }
-            
-            pstmt.setDouble(4, order.getTotalCost());
-            pstmt.setString(5, order.getStatus());
-
-            System.out.println("Выполнение SQL-запроса: " + sql);
-            System.out.println("Параметры: 1=" + order.getUser().getId() + 
-                              ", 2=" + order.getOrderDate() + 
-                              ", 3=" + (order.getDeliveryDate() != null ? order.getDeliveryDate() : "null") + 
-                              ", 4=" + order.getTotalCost() + 
-                              ", 5=" + order.getStatus());
-            
-            int affectedRows = pstmt.executeUpdate();
-            System.out.println("Затронуто строк: " + affectedRows);
-            
-            if (affectedRows > 0) {
-                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        int orderId = generatedKeys.getInt(1);
-                        order.setId(orderId);
-                        System.out.println("Заказ добавлен с ID: " + orderId);
-                        
-                        // Добавляем товары в заказ
-                        return addOrderItems(order);
-                    } else {
-                        System.out.println("Не удалось получить ID добавленного заказа");
+                System.out.println("Выполнение SQL-запроса для добавления заказа");
+                
+                int affectedRows = pstmt.executeUpdate();
+                System.out.println("Затронуто строк при добавлении заказа: " + affectedRows);
+                
+                if (affectedRows > 0) {
+                    try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                        if (generatedKeys.next()) {
+                            int orderId = generatedKeys.getInt(1);
+                            order.setId(orderId);
+                            System.out.println("Заказ добавлен с ID: " + orderId);
+                            
+                            // Добавляем товары в заказ
+                            System.out.println("Добавление товаров в заказ...");
+                            boolean itemsAdded = addOrderItems(order, conn);
+                            
+                            if (itemsAdded) {
+                                // Если все успешно, фиксируем транзакцию
+                                System.out.println("Товары успешно добавлены в заказ, фиксация транзакции...");
+                                conn.commit();
+                                System.out.println("Транзакция успешно зафиксирована");
+                                return true;
+                            } else {
+                                // Если не удалось добавить товары, откатываем транзакцию
+                                System.out.println("Не удалось добавить товары в заказ, откат транзакции...");
+                                conn.rollback();
+                                System.out.println("Транзакция отменена: не удалось добавить товары в заказ");
+                                return false;
+                            }
+                        } else {
+                            // Если не удалось получить ID заказа, откатываем транзакцию
+                            System.out.println("Не удалось получить ID добавленного заказа, откат транзакции...");
+                            conn.rollback();
+                            System.out.println("Транзакция отменена: не удалось получить ID добавленного заказа");
+                            return false;
+                        }
+                    }
+                } else {
+                    // Если не удалось добавить заказ, откатываем транзакцию
+                    System.out.println("Не удалось добавить заказ, откат транзакции...");
+                    conn.rollback();
+                    System.out.println("Заказ не был добавлен");
+                    return false;
+                }
+            } catch (SQLException e) {
+                // В случае ошибки откатываем транзакцию
+                if (conn != null) {
+                    try {
+                        conn.rollback();
+                        System.out.println("Транзакция отменена из-за ошибки: " + e.getMessage());
+                    } catch (SQLException ex) {
+                        System.out.println("Ошибка при откате транзакции: " + ex.getMessage());
+                        ex.printStackTrace();
+                    }
+                }
+                
+                System.out.println("Ошибка при добавлении заказа: " + e.getMessage());
+                System.out.println("SQL State: " + e.getSQLState());
+                System.out.println("Error Code: " + e.getErrorCode());
+                e.printStackTrace();
+                return false;
+            } finally {
+                // Восстанавливаем автоматическое подтверждение транзакций
+                if (conn != null) {
+                    try {
+                        conn.setAutoCommit(true);
+                        // Не закрываем соединение здесь, так как оно будет закрыто автоматически
+                    } catch (SQLException e) {
+                        System.out.println("Ошибка при восстановлении autoCommit: " + e.getMessage());
+                        e.printStackTrace();
                     }
                 }
             }
-            System.out.println("Заказ не был добавлен");
-            return false;
         } catch (SQLException e) {
-            System.out.println("Ошибка при добавлении заказа: " + e.getMessage());
-            System.out.println("SQL State: " + e.getSQLState());
-            System.out.println("Error Code: " + e.getErrorCode());
+            System.out.println("Ошибка при получении соединения с базой данных: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -163,29 +233,94 @@ public class OrderDAO {
 
     //Добавить товары в заказ
     //order заказ с товарами
+    //conn активное соединение с базой данных
     //return true, если товары успешно добавлены, иначе false
-    private boolean addOrderItems(Order order) {
-        // Исправлено имя колонки с price_per_item на price
-        String sql = "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)";
-
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            if (conn == null) {
-                System.out.println("Ошибка: не удалось получить соединение с базой данных");
-                return false;
-            }
-
-            System.out.println("Добавление товаров в заказ #" + order.getId());
-            
+    private boolean addOrderItems(Order order, Connection conn) {
+        // Проверка на null значения
+        if (order == null) {
+            System.out.println("Ошибка: передан null-заказ при добавлении товаров");
+            return false;
+        }
+        
+        if (conn == null) {
+            System.out.println("Ошибка: передано null-соединение при добавлении товаров в заказ");
+            return false;
+        }
+        
+        // Проверка на валидный ID заказа
+        if (order.getId() <= 0) {
+            System.out.println("Ошибка: неверный ID заказа (" + order.getId() + ") при добавлении товаров");
+            return false;
+        }
+        
+        // Проверка на наличие товаров в заказе
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            System.out.println("Ошибка: список товаров в заказе пуст");
+            return false;
+        }
+        
+        System.out.println("Количество товаров в заказе: " + order.getItems().size());
+        
+        // Используем PreparedStatement для вставки товаров
+        String sql = "INSERT INTO order_items (order_id, product_id, quantity, price_per_item) VALUES (?, ?, ?, ?)";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            // Добавляем каждый товар в пакет запросов
             for (OrderItem item : order.getItems()) {
+                // Проверка на null значения
+                if (item == null) {
+                    System.out.println("Ошибка: null-элемент в списке товаров заказа");
+                    continue;
+                }
+                
+                if (item.getProduct() == null) {
+                    System.out.println("Ошибка: товар не определен в элементе заказа");
+                    return false;
+                }
+                
+                // Проверка на валидный ID товара
+                if (item.getProduct().getId() <= 0) {
+                    System.out.println("Ошибка: неверный ID товара (" + item.getProduct().getId() + ") при добавлении в заказ");
+                    return false;
+                }
+                
+                // Проверка на валидное количество товара
+                if (item.getQuantity() <= 0) {
+                    System.out.println("Ошибка: неверное количество товара (" + item.getQuantity() + ") при добавлении в заказ");
+                    return false;
+                }
+                
+                // Получаем актуальную информацию о товаре из базы данных, используя то же соединение
+                Product freshProduct = productDAO.getProductByIdWithConnection(item.getProduct().getId(), conn);
+                if (freshProduct == null) {
+                    System.out.println("Ошибка: не удалось получить актуальную информацию о товаре с ID: " + item.getProduct().getId());
+                    return false;
+                }
+                
+                // Проверяем наличие на складе
+                if (freshProduct.getStockQuantity() < item.getQuantity()) {
+                    System.out.println("Ошибка: недостаточно товара на складе. ID=" + freshProduct.getId() + 
+                                      ", Доступно=" + freshProduct.getStockQuantity() + 
+                                      ", Требуется=" + item.getQuantity());
+                    return false;
+                }
+                
+                // Обновляем информацию о товаре в элементе заказа
+                item.setProduct(freshProduct);
+                
+                System.out.println("Подготовка добавления товара: ID=" + item.getProduct().getId() + 
+                                  ", Название=" + item.getProduct().getName() + 
+                                  ", Количество=" + item.getQuantity() + 
+                                  ", Цена=" + item.getPrice());
+                
+                // Устанавливаем параметры запроса
                 pstmt.setInt(1, order.getId());
                 pstmt.setInt(2, item.getProduct().getId());
                 pstmt.setInt(3, item.getQuantity());
                 pstmt.setDouble(4, item.getPrice());
                 pstmt.addBatch();
                 
-                System.out.println("Добавление товара: ID=" + item.getProduct().getId() + 
+                System.out.println("Товар добавлен в пакет запросов: ID=" + item.getProduct().getId() + 
                                   ", Название=" + item.getProduct().getName() + 
                                   ", Количество=" + item.getQuantity() + 
                                   ", Цена=" + item.getPrice());
@@ -193,6 +328,7 @@ public class OrderDAO {
                 // Уменьшаем количество товара на складе
                 Product product = item.getProduct();
                 int newQuantity = product.getStockQuantity() - item.getQuantity();
+                
                 if (newQuantity < 0) {
                     System.out.println("Ошибка: недостаточное количество товара на складе. ID=" + 
                                       product.getId() + ", Доступно=" + product.getStockQuantity() + 
@@ -200,7 +336,8 @@ public class OrderDAO {
                     return false;
                 }
                 
-                boolean updated = productDAO.updateProductQuantity(product.getId(), newQuantity);
+                // Обновляем количество товара на складе
+                boolean updated = productDAO.updateProductQuantityWithConnection(product.getId(), newQuantity, conn);
                 if (!updated) {
                     System.out.println("Ошибка: не удалось обновить количество товара на складе. ID=" + product.getId());
                     return false;
@@ -208,11 +345,30 @@ public class OrderDAO {
                 
                 // Обновляем количество в объекте товара в памяти
                 product.setStockQuantity(newQuantity);
+                System.out.println("Количество товара в памяти обновлено: ID=" + product.getId() + 
+                                  ", Новое количество=" + product.getStockQuantity());
             }
             
-            int[] affectedRows = pstmt.executeBatch();
-            System.out.println("Добавлено товаров в заказ: " + affectedRows.length);
-            return affectedRows.length == order.getItems().size();
+            // Выполняем пакет запросов на добавление товаров
+            System.out.println("Выполнение пакета запросов на добавление товаров...");
+            int[] results = pstmt.executeBatch();
+            
+            // Проверяем результаты выполнения
+            boolean allSuccessful = true;
+            for (int i = 0; i < results.length; i++) {
+                if (results[i] <= 0 && results[i] != Statement.SUCCESS_NO_INFO) {
+                    allSuccessful = false;
+                    System.out.println("Ошибка при добавлении товара #" + (i+1) + " в заказ");
+                }
+            }
+            
+            if (allSuccessful) {
+                System.out.println("Все товары успешно добавлены в заказ");
+                return true;
+            } else {
+                System.out.println("Ошибка: не все товары были добавлены в заказ");
+                return false;
+            }
         } catch (SQLException e) {
             System.out.println("Ошибка при добавлении товаров в заказ: " + e.getMessage());
             System.out.println("SQL State: " + e.getSQLState());
@@ -341,15 +497,14 @@ public class OrderDAO {
     //return заказ
     //throws SQLException если произошла ошибка при работе с базой данных
     private Order extractOrderFromResultSet(ResultSet rs) throws SQLException {
-        int userId = rs.getInt("user_id");
-        User user = userDAO.getUserById(userId);
+        User user = userDAO.getUserById(rs.getInt("user_id"));
         
         Order order = new Order(
                 rs.getInt("id"),
                 user,
                 rs.getTimestamp("order_date").toLocalDateTime(),
                 rs.getTimestamp("delivery_date") != null ? rs.getTimestamp("delivery_date").toLocalDateTime() : null,
-                rs.getDouble("total_price"),
+                rs.getDouble("total_cost"),
                 rs.getString("status"));
         
         return order;

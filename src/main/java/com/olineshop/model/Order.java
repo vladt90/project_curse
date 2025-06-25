@@ -16,7 +16,7 @@ public class Order {
     public Order() {
         this.items = new ArrayList<>();
         this.orderDate = LocalDateTime.now();
-        this.status = "В обработке";
+        this.status = "Новый";
     }
 
 
@@ -108,16 +108,7 @@ public class Order {
 
         double discount = user != null ? user.getDiscount() : 0.0;
         
-        double additionalDiscount = 0.0;
-        if (subtotal > 10000) {
-            additionalDiscount = 0.05; 
-        } else if (subtotal > 5000) {
-            additionalDiscount = 0.03;
-        }
-
-        double totalDiscount = Math.min(discount + additionalDiscount, 0.1);
-        
-        this.totalCost = subtotal * (1 - totalDiscount);
+        this.totalCost = subtotal * (1 - discount);
     }
 
     @Override

@@ -132,6 +132,32 @@ public class ProductDAO {
         return null;
     }
 
+    //Получить товар по идентификатору, используя существующее соединение
+    //id идентификатор товара
+    //conn существующее соединение с базой данных
+    //return товар или null, если товар не найден
+    public Product getProductByIdWithConnection(int id, Connection conn) {
+        if (conn == null) {
+            System.out.println("Ошибка: передано null-соединение при получении товара по ID");
+            return null;
+        }
+        
+        String sql = "SELECT * FROM products WHERE id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return extractProductFromResultSet(rs);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Ошибка при получении товара по ID: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     //Добавить новый товар в базу данных
     //product товар для добавления
     //return true, если товар успешно добавлен, иначе false
@@ -383,6 +409,74 @@ public class ProductDAO {
             return affectedRows > 0;
         } catch (SQLException e) {
             System.out.println("Ошибка при обновлении количества товара: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    //Обновить количество товара на складе с использованием существующего соединения
+    //productId идентификатор товара
+    //newQuantity новое количество товара
+    //conn существующее соединение с базой данных
+    //return true, если количество успешно обновлено, иначе false
+    public boolean updateProductQuantityWithConnection(int productId, int newQuantity, Connection conn) {
+        if (conn == null) {
+            System.out.println("Ошибка: передано null-соединение при обновлении количества товара");
+            return false;
+        }
+        
+        // Проверка на валидный ID товара
+        if (productId <= 0) {
+            System.out.println("Ошибка: неверный ID товара (" + productId + ") при обновлении количества");
+            return false;
+        }
+        
+        // Проверка на валидное количество товара
+        if (newQuantity < 0) {
+            System.out.println("Ошибка: отрицательное количество товара (" + newQuantity + ") при обновлении");
+            return false;
+        }
+        
+        // Сначала проверяем существование товара с указанным ID
+        String checkSql = "SELECT id FROM products WHERE id = ?";
+        try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+            checkStmt.setInt(1, productId);
+            try (ResultSet rs = checkStmt.executeQuery()) {
+                if (!rs.next()) {
+                    System.out.println("Ошибка: товар с ID=" + productId + " не найден в базе данных");
+                    return false;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Ошибка при проверке существования товара: " + e.getMessage());
+            System.out.println("SQL State: " + e.getSQLState());
+            System.out.println("Error Code: " + e.getErrorCode());
+            e.printStackTrace();
+            return false;
+        }
+        
+        String sql = "UPDATE products SET stock_quantity = ? WHERE id = ?";
+        System.out.println("Обновление количества товара с существующим соединением: ID=" + productId + ", Новое количество=" + newQuantity);
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, newQuantity);
+            pstmt.setInt(2, productId);
+
+            System.out.println("Выполнение SQL-запроса: " + sql);
+            System.out.println("Параметры: 1=" + newQuantity + ", 2=" + productId);
+            int affectedRows = pstmt.executeUpdate();
+            System.out.println("Затронуто строк: " + affectedRows);
+            
+            if (affectedRows == 0) {
+                System.out.println("Предупреждение: не обновлено ни одной строки при обновлении количества товара с ID=" + productId);
+                return false;
+            }
+            
+            return true;
+        } catch (SQLException e) {
+            System.out.println("Ошибка при обновлении количества товара: " + e.getMessage());
+            System.out.println("SQL State: " + e.getSQLState());
+            System.out.println("Error Code: " + e.getErrorCode());
             e.printStackTrace();
             return false;
         }
