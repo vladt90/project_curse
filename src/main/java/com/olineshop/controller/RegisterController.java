@@ -6,6 +6,7 @@ import com.olineshop.dao.RoleDAO;
 import com.olineshop.dao.UserDAO;
 import com.olineshop.model.Role;
 import com.olineshop.model.User;
+import com.olineshop.util.DatabaseManager;
 import com.olineshop.view.LoginView;
 import com.olineshop.view.RegisterView;
 
@@ -33,6 +34,14 @@ public class RegisterController {
     public void handleRegister(String login, String password, String confirmPassword,
             String firstName, String lastName, String email, String phone) {
         System.out.println("Начало регистрации");
+        
+        // Проверяем подключение к базе данных
+        if (DatabaseManager.isConnectionFailed()) {
+            System.out.println("Ошибка подключения к базе данных: " + DatabaseManager.getLastErrorMessage());
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка подключения", 
+                    "Не удалось подключиться к базе данных. Проверьте настройки подключения.");
+            return;
+        }
         
         // поля не пустые?
         if (login == null || login.trim().isEmpty()) {
@@ -89,21 +98,50 @@ public class RegisterController {
         System.out.println("Получение роли клиента");
         
         List<Role> allRoles = roleDAO.getAllRoles();
+        if (allRoles == null || allRoles.isEmpty()) {
+            System.out.println("Ошибка: не удалось получить список ролей из базы данных");
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось получить список ролей. Проверьте подключение к базе данных.");
+            return;
+        }
+        
         System.out.println("Доступные роли:");
         for (Role role : allRoles) {
             System.out.println("ID: " + role.getId() + ", Название: " + role.getName());
         }
         
-        Role clientRole = roleDAO.getRoleById(2);
+        Role clientRole = null;
         
+        // пробуем найти роль по названию
+        clientRole = roleDAO.getRoleByName("Клиент");
+        
+        // пробуем по ID
         if (clientRole == null) {
-            System.out.println("Не удалось найти роль клиента по ID=2, пробуем найти по названию");
-            clientRole = roleDAO.getRoleByName("Клиент");
+            System.out.println("Не удалось найти роль клиента по названию, пробуем найти по ID=2");
+            clientRole = roleDAO.getRoleById(2);
+        }
+        
+        if (clientRole == null && !allRoles.isEmpty()) {
+            System.out.println("Не удалось найти роль клиента ни по названию, ни по ID. Пробуем использовать доступную роль.");
+            for (Role role : allRoles) {
+                if (role.getName().toLowerCase().contains("клиент") || 
+                    role.getName().toLowerCase().contains("client") ||
+                    role.getName().toLowerCase().contains("user")) {
+                    clientRole = role;
+                    System.out.println("Найдена подходящая роль: " + role.getName());
+                    break;
+                }
+            }
+            
+            // Если не нашли подходящую, берем первую доступную
+            if (clientRole == null) {
+                clientRole = allRoles.get(0);
+                System.out.println("Используем первую доступную роль: " + clientRole.getName());
+            }
         }
         
         if (clientRole == null) {
             System.out.println("Ошибка: не удалось получить роль пользователя");
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось получить роль пользователя");
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось получить роль пользователя. Проверьте настройки базы данных.");
             return;
         }
         

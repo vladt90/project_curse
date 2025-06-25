@@ -11,6 +11,8 @@ import com.olineshop.view.RegisterView;
 import com.olineshop.dao.RoleDAO;
 import com.olineshop.model.Role;
 
+import java.util.List;
+
 //Контроллер для окна входа в систему
 
 public class LoginController {
@@ -55,8 +57,44 @@ public class LoginController {
         if (login.equals(ADMIN_LOGIN) && password.equals(ADMIN_PASSWORD)) {
             System.out.println("Вход выполнен с использованием жестко заданных учетных данных администратора");
             
+            // Получаем список всех ролей
+            List<Role> allRoles = roleDAO.getAllRoles();
+            System.out.println("Доступные роли:");
+            for (Role role : allRoles) {
+                System.out.println("ID: " + role.getId() + ", Название: " + role.getName());
+            }
+            
             // Создаем объект администратора
-            Role adminRole = roleDAO.getRoleById(1); // Роль администратора (ID = 1)
+            Role adminRole = null;
+            
+            // Сначала пробуем найти роль по названию
+            adminRole = roleDAO.getRoleByName("Администратор");
+            
+            // Если по названию не нашли, пробуем по ID
+            if (adminRole == null) {
+                System.out.println("Не удалось найти роль администратора по названию, пробуем найти по ID=1");
+                adminRole = roleDAO.getRoleById(1);
+            }
+            
+            // Если и по ID не нашли, пробуем взять первую подходящую роль из списка
+            if (adminRole == null && !allRoles.isEmpty()) {
+                System.out.println("Не удалось найти роль администратора ни по названию, ни по ID. Пробуем использовать доступную роль.");
+                for (Role role : allRoles) {
+                    if (role.getName().toLowerCase().contains("админ") || 
+                        role.getName().toLowerCase().contains("admin")) {
+                        adminRole = role;
+                        System.out.println("Найдена подходящая роль: " + role.getName());
+                        break;
+                    }
+                }
+                
+                // Если не нашли подходящую, берем первую доступную
+                if (adminRole == null && !allRoles.isEmpty()) {
+                    adminRole = allRoles.get(0);
+                    System.out.println("Используем первую доступную роль: " + adminRole.getName());
+                }
+            }
+            
             if (adminRole == null) {
                 System.out.println("Ошибка: не удалось получить роль администратора");
                 view.showAlert(Alert.AlertType.ERROR, "Ошибка входа", "Не удалось получить роль администратора");
@@ -71,7 +109,7 @@ public class LoginController {
             adminUser.setEmail("admin@example.com");
             adminUser.setRole(adminRole);
             
-
+            System.out.println("Создан администратор с ролью: ID=" + adminRole.getId() + ", Название=" + adminRole.getName());
             primaryStage.close();
             
             System.out.println("Открываем окно администратора");
