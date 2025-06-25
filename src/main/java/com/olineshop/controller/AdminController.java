@@ -53,101 +53,30 @@ public class AdminController {
     }
 
     public void loadProducts() {
+        // Сбрасываем соединение перед загрузкой товаров
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
         products.clear();
         products.addAll(productDAO.getAllProducts());
         view.updateProductTable(products);
     }
 
     public void loadUsers() {
+        // Сбрасываем соединение перед загрузкой пользователей
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
         users.clear();
         users.addAll(userDAO.getAllUsers());
         view.updateUserTable(users);
     }
 
     public void loadOrders() {
+        // Сбрасываем соединение перед загрузкой заказов
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
         orders.clear();
         orders.addAll(orderDAO.getAllOrders());
         view.updateOrderTable(orders);
-    }
-
-    public void addProduct(String name, double price, String unit, int quantity) {
-        if (name == null || name.trim().isEmpty()) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Введите название товара");
-            return;
-        }
-        
-        if (unit == null || unit.trim().isEmpty()) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Введите единицу измерения");
-            return;
-        }
-        
-        if (price <= 0) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Цена должна быть положительной");
-            return;
-        }
-        
-        if (quantity < 0) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Количество не может быть отрицательным");
-            return;
-        }
-        
-        Product product = new Product();
-        product.setName(name);
-        product.setPrice(price);
-        product.setUnit(unit);
-        product.setStockQuantity(quantity);
-        
-        boolean success = productDAO.addProduct(product);
-        
-        if (success) {
-            view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Товар успешно добавлен");
-            loadProducts();
-        } else {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось добавить товар");
-        }
-    }
-
-    public void updateProduct(int id, String name, double price, String unit, int quantity) {
-        if (name == null || name.trim().isEmpty()) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Введите название товара");
-            return;
-        }
-        
-        if (unit == null || unit.trim().isEmpty()) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Введите единицу измерения");
-            return;
-        }
-        
-        if (price <= 0) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Цена должна быть положительной");
-            return;
-        }
-        
-        if (quantity < 0) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Количество не может быть отрицательным");
-            return;
-        }
-        
-        Product product = productDAO.getProductById(id);
-        
-        if (product == null) {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Товар не найден");
-            return;
-        }
-        
-        product.setName(name);
-        product.setPrice(price);
-        product.setUnit(unit);
-        product.setStockQuantity(quantity);
-        
-        boolean success = productDAO.updateProduct(product);
-        
-        if (success) {
-            view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Товар успешно обновлен");
-            loadProducts();
-        } else {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось обновить товар");
-        }
     }
 
     public void deleteProduct(int id) {
@@ -159,13 +88,20 @@ public class AdminController {
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
+            // Сбрасываем соединение перед удалением
+            com.olineshop.util.DatabaseManager.resetConnectionStatus();
+            
             boolean success = productDAO.deleteProduct(id);
             
             if (success) {
                 view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Товар успешно удален");
+                // Перезагружаем список товаров после удаления
                 loadProducts();
             } else {
                 view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось удалить товар");
+                // Пробуем восстановить соединение и перезагрузить список товаров
+                com.olineshop.util.DatabaseManager.resetConnectionStatus();
+                loadProducts();
             }
         }
     }
@@ -515,9 +451,7 @@ public class AdminController {
         dialogStage.show();
     }
 
-
     public void deleteOrder(int id) {
-
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Подтверждение удаления");
         alert.setHeaderText(null);
@@ -526,7 +460,6 @@ public class AdminController {
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
-
             boolean success = orderDAO.deleteOrder(id);
             
             if (success) {
@@ -538,12 +471,12 @@ public class AdminController {
         }
     }
 
-
     public void handleLogout() {
-
+        // Сброс статус соединения с бд перед выходом
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
         primaryStage.close();
         
-
         LoginView loginView = new LoginView();
         loginView.start(new Stage());
     }

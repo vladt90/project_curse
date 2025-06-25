@@ -97,45 +97,55 @@ public class RegisterController {
         
         System.out.println("Получение роли клиента");
         
-        List<Role> allRoles = roleDAO.getAllRoles();
-        if (allRoles == null || allRoles.isEmpty()) {
-            System.out.println("Ошибка: не удалось получить список ролей из базы данных");
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось получить список ролей. Проверьте подключение к базе данных.");
-            return;
-        }
+       
+        DatabaseManager.resetConnectionStatus();
+
+        // Получаем роль "Клиент" напрямую из базы данных
+        Role clientRole = roleDAO.getRoleByName("Клиент");
         
-        System.out.println("Доступные роли:");
-        for (Role role : allRoles) {
-            System.out.println("ID: " + role.getId() + ", Название: " + role.getName());
-        }
-        
-        Role clientRole = null;
-        
-        // пробуем найти роль по названию
-        clientRole = roleDAO.getRoleByName("Клиент");
-        
-        // пробуем по ID
         if (clientRole == null) {
-            System.out.println("Не удалось найти роль клиента по названию, пробуем найти по ID=2");
-            clientRole = roleDAO.getRoleById(2);
-        }
-        
-        if (clientRole == null && !allRoles.isEmpty()) {
-            System.out.println("Не удалось найти роль клиента ни по названию, ни по ID. Пробуем использовать доступную роль.");
-            for (Role role : allRoles) {
-                if (role.getName().toLowerCase().contains("клиент") || 
-                    role.getName().toLowerCase().contains("client") ||
-                    role.getName().toLowerCase().contains("user")) {
-                    clientRole = role;
-                    System.out.println("Найдена подходящая роль: " + role.getName());
-                    break;
-                }
-            }
+            System.out.println("Не удалось найти роль 'Клиент', пробуем получить все роли");
             
-            // Если не нашли подходящую, берем первую доступную
+            // Пробуем создать стандартные роли, если они не существуют
+            roleDAO.createDefaultRoles();
+            
+            // Повторно пытаемся получить роль клиента
+            clientRole = roleDAO.getRoleByName("Клиент");
+            
             if (clientRole == null) {
-                clientRole = allRoles.get(0);
-                System.out.println("Используем первую доступную роль: " + clientRole.getName());
+                List<Role> allRoles = roleDAO.getAllRoles();
+                if (allRoles == null || allRoles.isEmpty()) {
+                    System.out.println("Ошибка: не удалось получить список ролей из базы данных");
+                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось получить список ролей. Проверьте подключение к базе данных.");
+                    return;
+                }
+                
+                System.out.println("Доступные роли:");
+                for (Role role : allRoles) {
+                    System.out.println("ID: " + role.getId() + ", Название: " + role.getName());
+                }
+                
+                // пробуем по ID
+                clientRole = roleDAO.getRoleById(2);
+                
+                if (clientRole == null && !allRoles.isEmpty()) {
+                    System.out.println("Не удалось найти роль клиента по ID. Пробуем найти подходящую роль.");
+                    for (Role role : allRoles) {
+                        if (role.getName().toLowerCase().contains("клиент") || 
+                            role.getName().toLowerCase().contains("client") ||
+                            role.getName().toLowerCase().contains("user")) {
+                            clientRole = role;
+                            System.out.println("Найдена подходящая роль: " + role.getName());
+                            break;
+                        }
+                    }
+                    
+                    // Если не нашли подходящую, берем первую доступную
+                    if (clientRole == null) {
+                        clientRole = allRoles.get(0);
+                        System.out.println("Используем первую доступную роль: " + clientRole.getName());
+                    }
+                }
             }
         }
         

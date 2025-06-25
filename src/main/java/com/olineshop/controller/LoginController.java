@@ -10,6 +10,7 @@ import com.olineshop.view.MainClientView;
 import com.olineshop.view.RegisterView;
 import com.olineshop.dao.RoleDAO;
 import com.olineshop.model.Role;
+import com.olineshop.util.DatabaseManager;
 
 import java.util.List;
 
@@ -56,6 +57,9 @@ public class LoginController {
         // Проверяем учетные данные администратора
         if (login.equals(ADMIN_LOGIN) && password.equals(ADMIN_PASSWORD)) {
             System.out.println("Вход выполнен с использованием жестко заданных учетных данных администратора");
+            
+            // Сбрасываем статус соединения с базой данных перед входом администратора
+            DatabaseManager.resetConnectionStatus();
             
             // Получаем список всех ролей
             List<Role> allRoles = roleDAO.getAllRoles();
@@ -119,6 +123,10 @@ public class LoginController {
         }
         
         System.out.println("Проверка учетных данных в базе данных...");
+
+        // Сбрасываем статус соединения с базой данных перед проверкой учетных данных
+        DatabaseManager.resetConnectionStatus();
+
         User user = userDAO.authenticate(login, password);
         
         if (user != null) {

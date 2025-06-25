@@ -24,12 +24,6 @@ public class MainAdminView {
     private TableView<Product> productTable;
     private TableView<User> userTable;
     private TableView<Order> orderTable;
-    
-    // Поля для добавления/редактирования товара
-    private TextField productNameField;
-    private TextField productPriceField;
-    private TextField productUnitField;
-    private TextField productQuantityField;
 
     //Запустить главное окно административной части
     //primaryStage главное окно приложения
@@ -119,97 +113,26 @@ public class MainAdminView {
         
         productTable.getColumns().addAll(idColumn, nameColumn, priceColumn, unitColumn, stockColumn);
         
-        GridPane formGrid = new GridPane();
-        formGrid.setHgap(10);
-        formGrid.setVgap(10);
-        formGrid.setPadding(new Insets(10, 10, 10, 10));
-        
-        Label nameLabel = new Label("Название:");
-        formGrid.add(nameLabel, 0, 0);
-        
-        productNameField = new TextField();
-        formGrid.add(productNameField, 1, 0);
-        
-        Label priceLabel = new Label("Цена (руб.):");
-        formGrid.add(priceLabel, 0, 1);
-        
-        productPriceField = new TextField();
-        formGrid.add(productPriceField, 1, 1);
-        
-        Label unitLabel = new Label("Ед. изм. (шт, кг, л):");
-        formGrid.add(unitLabel, 0, 2);
-        
-        productUnitField = new TextField();
-        formGrid.add(productUnitField, 1, 2);
-        
-        Label quantityLabel = new Label("Количество:");
-        formGrid.add(quantityLabel, 0, 3);
-        
-        productQuantityField = new TextField();
-        formGrid.add(productQuantityField, 1, 3);
-        
         HBox buttonPanel = new HBox(10);
-        
-        Button addButton = new Button("Добавить");
-        addButton.setOnAction(e -> {
-            try {
-                String name = productNameField.getText();
-                double price = Double.parseDouble(productPriceField.getText());
-                String unit = productUnitField.getText();
-                int quantity = Integer.parseInt(productQuantityField.getText());
-                
-                controller.addProduct(name, price, unit, quantity);
-                clearProductForm();
-            } catch (NumberFormatException ex) {
-                showAlert(Alert.AlertType.ERROR, "Ошибка", "Некорректный формат числа");
-            }
-        });
-        
-        Button updateButton = new Button("Обновить");
-        updateButton.setOnAction(e -> {
-            Product selectedProduct = productTable.getSelectionModel().getSelectedItem();
-            if (selectedProduct != null) {
-                try {
-                    String name = productNameField.getText();
-                    double price = Double.parseDouble(productPriceField.getText());
-                    String unit = productUnitField.getText();
-                    int quantity = Integer.parseInt(productQuantityField.getText());
-                    
-                    controller.updateProduct(selectedProduct.getId(), name, price, unit, quantity);
-                    clearProductForm();
-                } catch (NumberFormatException ex) {
-                    showAlert(Alert.AlertType.ERROR, "Ошибка", "Некорректный формат числа");
-                }
-            } else {
-                showAlert(Alert.AlertType.WARNING, "Предупреждение", "Выберите товар для обновления");
-            }
-        });
         
         Button deleteButton = new Button("Удалить");
         deleteButton.setOnAction(e -> {
             Product selectedProduct = productTable.getSelectionModel().getSelectedItem();
             if (selectedProduct != null) {
-                controller.deleteProduct(selectedProduct.getId());
+                try {
+                    controller.deleteProduct(selectedProduct.getId());
+                } catch (Exception ex) {
+                    showAlert(Alert.AlertType.ERROR, "Ошибка", "Произошла ошибка при удалении товара: " + ex.getMessage());
+                    ex.printStackTrace();
+                }
             } else {
                 showAlert(Alert.AlertType.WARNING, "Предупреждение", "Выберите товар для удаления");
             }
         });
         
-        Button clearButton = new Button("Очистить");
-        clearButton.setOnAction(e -> clearProductForm());
+        buttonPanel.getChildren().addAll(deleteButton);
         
-        buttonPanel.getChildren().addAll(addButton, updateButton, deleteButton, clearButton);
-        
-        productTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
-            if (newSelection != null) {
-                productNameField.setText(newSelection.getName());
-                productPriceField.setText(String.valueOf(newSelection.getPrice()));
-                productUnitField.setText(newSelection.getUnit());
-                productQuantityField.setText(String.valueOf(newSelection.getStockQuantity()));
-            }
-        });
-        
-        vbox.getChildren().addAll(title, productTable, formGrid, buttonPanel);
+        vbox.getChildren().addAll(title, productTable, buttonPanel);
         
         return vbox;
     }
@@ -370,15 +293,6 @@ public class MainAdminView {
         vbox.getChildren().addAll(title, orderTable, buttonPanel);
         
         return vbox;
-    }
-
-    //Очистить форму товара
-    private void clearProductForm() {
-        productNameField.clear();
-        productPriceField.clear();
-        productUnitField.clear();
-        productQuantityField.clear();
-        productTable.getSelectionModel().clearSelection();
     }
 
     //Обновить таблицу товаров

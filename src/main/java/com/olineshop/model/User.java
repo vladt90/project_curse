@@ -107,7 +107,11 @@ public class User {
     }
 
     public boolean isAdmin() {
-        return role != null && "Администратор".equals(role.getName());
+        return role != null && 
+               ("Администратор".equals(role.getName()) || 
+                "Admin".equals(role.getName()) || 
+                "admin".equals(role.getName()) || 
+                role.getName().toLowerCase().contains("админ"));
     }
 
     @Override

@@ -22,15 +22,27 @@ public class UserDAO {
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
         String sql = "SELECT * FROM users";
+        System.out.println("Получение всех пользователей из базы данных");
+
+        // Сбрасываем соединение перед выполнением запроса
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 ResultSet rs = pstmt.executeQuery()) {
 
+            if (conn == null) {
+                System.out.println("Ошибка: не удалось получить соединение с базой данных");
+                return users;
+            }
+
+            System.out.println("Выполнение SQL-запроса: " + sql);
             while (rs.next()) {
                 users.add(extractUserFromResultSet(rs));
             }
+            System.out.println("Всего найдено пользователей: " + users.size());
         } catch (SQLException e) {
+            System.out.println("Ошибка при получении всех пользователей: " + e.getMessage());
             e.printStackTrace();
         }
         return users;

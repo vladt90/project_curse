@@ -22,17 +22,29 @@ public class OrderDAO {
     public List<Order> getAllOrders() {
         List<Order> orders = new ArrayList<>();
         String sql = "SELECT * FROM orders";
+        System.out.println("Получение всех заказов из базы данных");
+
+        // Сбрасываем соединение перед выполнением запроса
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 ResultSet rs = pstmt.executeQuery()) {
 
+            if (conn == null) {
+                System.out.println("Ошибка: не удалось получить соединение с базой данных");
+                return orders;
+            }
+
+            System.out.println("Выполнение SQL-запроса: " + sql);
             while (rs.next()) {
                 Order order = extractOrderFromResultSet(rs);
                 loadOrderItems(order);
                 orders.add(order);
             }
+            System.out.println("Всего найдено заказов: " + orders.size());
         } catch (SQLException e) {
+            System.out.println("Ошибка при получении всех заказов: " + e.getMessage());
             e.printStackTrace();
         }
         return orders;

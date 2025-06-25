@@ -27,6 +27,16 @@
             <artifactId>javafx-graphics</artifactId>
             <version>${javafx.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
 
         <!-- MySQL Connector -->
         <dependency>
@@ -53,6 +63,10 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.olineshop.Main</mainClass>
+                    <options>
+                        <option>--add-opens</option>
+                        <option>javafx.graphics/javafx.scene=ALL-UNNAMED</option>
+                    </options>
                 </configuration>
             </plugin>
             <plugin>

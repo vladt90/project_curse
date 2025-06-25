@@ -3,12 +3,17 @@ package com.olineshop.dao;
 import com.olineshop.model.Role;
 import com.olineshop.util.DatabaseManager;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 //Класс для работы с ролями в базе данных
 
@@ -158,7 +163,7 @@ public class RoleDAO {
     //name название роли
     //return роль или null, если роль не найдена
     public Role getRoleByName(String name) {
-        String sql = "SELECT * FROM roles WHERE name = ?";
+        String sql = "SELECT * FROM roles WHERE LOWER(name) = LOWER(?)";
         System.out.println("Получение роли по названию: " + name);
 
         Connection conn = null;
@@ -184,6 +189,21 @@ public class RoleDAO {
                 return role;
             } else {
                 System.out.println("Роль с названием '" + name + "' не найдена");
+                
+                // Если точное совпадение не найдено, пробуем найти по частичному совпадению
+                String fuzzySQL = "SELECT * FROM roles WHERE LOWER(name) LIKE LOWER(?)";
+                try (PreparedStatement fuzzyStmt = conn.prepareStatement(fuzzySQL)) {
+                    fuzzyStmt.setString(1, "%" + name + "%");
+                    try (ResultSet fuzzyRs = fuzzyStmt.executeQuery()) {
+                        if (fuzzyRs.next()) {
+                            Role role = new Role(
+                                    fuzzyRs.getInt("id"),
+                                    fuzzyRs.getString("name"));
+                            System.out.println("Найдена похожая роль: ID=" + role.getId() + ", Название=" + role.getName());
+                            return role;
+                        }
+                    }
+                }
             }
         } catch (SQLException e) {
             System.out.println("Ошибка при получении роли по названию: " + e.getMessage());
@@ -257,16 +277,25 @@ public class RoleDAO {
     }
     
 
-    private boolean createDefaultRoles() {
+    public boolean createDefaultRoles() {
         System.out.println("Создание стандартных ролей в базе данных");
         
-
         try (Connection conn = DatabaseManager.getConnection()) {
             if (conn == null) {
                 System.out.println("Ошибка: не удалось получить соединение с базой данных");
                 return false;
             }
             
+            
+            try {
+                executeSqlFromFile(conn);
+                System.out.println("Инициализация базы данных из SQL-файла выполнена успешно");
+                return true;
+            } catch (Exception e) {
+                System.out.println("Ошибка при инициализации из SQL-файла: " + e.getMessage());
+                System.out.println("Пробуем создать роли вручную...");
+            }
+
             String createTableSQL = "CREATE TABLE IF NOT EXISTS `roles` (" +
                                    "`id` INT AUTO_INCREMENT PRIMARY KEY," +
                                    "`name` VARCHAR(50) NOT NULL UNIQUE)";
@@ -317,6 +346,31 @@ public class RoleDAO {
             System.out.println("Ошибка при создании стандартных ролей: " + e.getMessage());
             e.printStackTrace();
             return false;
+        }
+    }
+    
+
+    private void executeSqlFromFile(Connection conn) throws Exception {
+        System.out.println("Выполнение SQL из файла schema.sql");
+        
+
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream("db/schema.sql");
+        if (inputStream == null) {
+            throw new Exception("Не удалось найти файл schema.sql в ресурсах");
+        }
+        
+        String sql = new BufferedReader(new InputStreamReader(inputStream))
+                .lines().collect(Collectors.joining("\n"));
+        
+        String[] sqlCommands = sql.split(";");
+
+        try (Statement stmt = conn.createStatement()) {
+            for (String command : sqlCommands) {
+                if (!command.trim().isEmpty()) {
+                    System.out.println("Выполнение SQL-команды: " + command);
+                    stmt.execute(command);
+                }
+            }
         }
     }
 } 
