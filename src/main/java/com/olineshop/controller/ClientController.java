@@ -8,6 +8,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import com.olineshop.dao.OrderDAO;
@@ -61,9 +62,18 @@ public class ClientController {
 
     //загрузка товаров(сп)
     public void loadProducts() {
-        products.clear();
-        products.addAll(productDAO.getAllProducts());
-        view.updateProductTable(products);
+        // Сбрасываем соединение перед загрузкой товаров
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
+        try {
+            products.clear();
+            products.addAll(productDAO.getAllProducts());
+            view.updateProductTable(products);
+        } catch (Exception e) {
+            System.out.println("Ошибка при загрузке товаров: " + e.getMessage());
+            e.printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось загрузить товары: " + e.getMessage());
+        }
     }
     
     //поиск товаров по названию
@@ -75,25 +85,52 @@ public class ClientController {
             return;
         }
         
-        products.clear();
-        products.addAll(productDAO.searchProductsByName(searchTerm));
-        view.updateProductTable(products);
+        // Сбрасываем соединение перед поиском товаров
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
+        try {
+            products.clear();
+            products.addAll(productDAO.searchProductsByName(searchTerm));
+            view.updateProductTable(products);
+        } catch (Exception e) {
+            System.out.println("Ошибка при поиске товаров: " + e.getMessage());
+            e.printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось найти товары: " + e.getMessage());
+        }
     }
     
     //фильтр цены
      //minPrice мин цена
      //maxPrice мак цена
     public void filterProductsByPrice(double minPrice, double maxPrice) {
-        products.clear();
-        products.addAll(productDAO.filterProductsByPrice(minPrice, maxPrice));
-        view.updateProductTable(products);
+        // Сбрасываем соединение перед фильтрацией товаров
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
+        try {
+            products.clear();
+            products.addAll(productDAO.filterProductsByPrice(minPrice, maxPrice));
+            view.updateProductTable(products);
+        } catch (Exception e) {
+            System.out.println("Ошибка при фильтрации товаров: " + e.getMessage());
+            e.printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось отфильтровать товары: " + e.getMessage());
+        }
     }
 
     // для истории бож (главное не забыть!!!!)
     public void loadOrderHistory() {
-        orders.clear();
-        orders.addAll(orderDAO.getOrdersByUser(currentUser.getId()));
-        view.updateOrderHistoryTable(orders);
+        // Сбрасываем соединение перед загрузкой истории заказов
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
+        try {
+            orders.clear();
+            orders.addAll(orderDAO.getOrdersByUser(currentUser.getId()));
+            view.updateOrderHistoryTable(orders);
+        } catch (Exception e) {
+            System.out.println("Ошибка при загрузке истории заказов: " + e.getMessage());
+            e.printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось загрузить историю заказов: " + e.getMessage());
+        }
     }
 
     //добавление в корзину
@@ -155,15 +192,27 @@ public class ClientController {
             total += item.getPrice() * item.getQuantity();
         }
         
-        // делаем скидку
-        total = total * (1 - currentUser.getDiscount());
+        System.out.println("Сумма заказа до скидок: " + total + " руб.");
         
-        // применяем доп скидку 
-        if (total > 5000) {
-            // поменять!!!!
-            total = total * 0.95;
+        // Применяем персональную скидку пользователя
+        double userDiscountAmount = 0.0;
+        if (currentUser.getDiscount() > 0) {
+            userDiscountAmount = total * currentUser.getDiscount();
+            System.out.println("Персональная скидка (" + (currentUser.getDiscount() * 100) + "%): " + 
+                              userDiscountAmount + " руб.");
+            total -= userDiscountAmount;
         }
         
+        // Применяем дополнительную скидку за большой заказ
+        double additionalDiscountAmount = 0.0;
+        if (total > 5000) {
+            additionalDiscountAmount = total * 0.05; // 5% скидка
+            System.out.println("Дополнительная скидка за заказ от 5000 руб. (5%): " + 
+                              additionalDiscountAmount + " руб.");
+            total -= additionalDiscountAmount;
+        }
+        
+        System.out.println("Итоговая сумма заказа после всех скидок: " + total + " руб.");
         return total;
     }
     
@@ -226,16 +275,51 @@ public class ClientController {
             originalPrice += item.getPrice() * item.getQuantity();
         }
         
-        Label discountLabel = new Label(String.format("Скидка: %.2f%%", currentUser.getDiscount() * 100));
-        Label additionalDiscountLabel = new Label();
-        if (originalPrice > 5000) {
-            additionalDiscountLabel.setText("Дополнительная скидка за заказ от 5000 руб.: 5%");
-        } else {
-            additionalDiscountLabel.setText("Для получения дополнительной скидки 5% сумма заказа должна быть более 5000 руб.");
+        // Создаем панель с информацией о скидках
+        GridPane discountGrid = new GridPane();
+        discountGrid.setHgap(10);
+        discountGrid.setVgap(5);
+        discountGrid.setPadding(new Insets(10, 0, 10, 0));
+        
+        int row = 0;
+        
+        // Сумма до скидок
+        discountGrid.add(new Label("Сумма без скидок:"), 0, row);
+        discountGrid.add(new Label(String.format("%.2f руб.", originalPrice)), 1, row);
+        row++;
+        
+        // Персональная скидка пользователя
+        if (currentUser.getDiscount() > 0) {
+            double userDiscountAmount = originalPrice * currentUser.getDiscount();
+            discountGrid.add(new Label(String.format("Персональная скидка (%.0f%%):", currentUser.getDiscount() * 100)), 0, row);
+            discountGrid.add(new Label(String.format("-%.2f руб.", userDiscountAmount)), 1, row);
+            row++;
         }
         
-        Label totalLabel = new Label(String.format("Итоговая сумма: %.2f руб.", totalPrice));
+        // Дополнительная скидка за большой заказ
+        if (originalPrice > 5000) {
+            double additionalDiscountAmount = (originalPrice * (1 - currentUser.getDiscount())) * 0.05;
+            discountGrid.add(new Label("Дополнительная скидка за заказ от 5000 руб. (5%):"), 0, row);
+            discountGrid.add(new Label(String.format("-%.2f руб.", additionalDiscountAmount)), 1, row);
+            row++;
+        } else {
+            discountGrid.add(new Label("Для получения дополнительной скидки 5% сумма заказа должна быть более 5000 руб."), 0, row, 2, 1);
+            row++;
+        }
+        
+        // Разделительная линия
+        javafx.scene.shape.Line line = new javafx.scene.shape.Line(0, 0, 300, 0);
+        discountGrid.add(line, 0, row, 2, 1);
+        row++;
+        
+        // Итоговая сумма
+        Label totalLabel = new Label("Итоговая сумма:");
         totalLabel.setStyle("-fx-font-weight: bold;");
+        discountGrid.add(totalLabel, 0, row);
+        
+        Label totalValueLabel = new Label(String.format("%.2f руб.", totalPrice));
+        totalValueLabel.setStyle("-fx-font-weight: bold;");
+        discountGrid.add(totalValueLabel, 1, row);
         
         // Кнопки
         Button confirmButton = new Button("Подтвердить заказ");
@@ -247,13 +331,15 @@ public class ClientController {
         Button cancelButton = new Button("Отмена");
         cancelButton.setOnAction(e -> confirmStage.close());
         
+        HBox buttonBox = new HBox(10, confirmButton, cancelButton);
+        buttonBox.setPadding(new Insets(10, 0, 0, 0));
+        
         vbox.getChildren().addAll(
                 titleLabel, 
+                new Label("Товары в заказе:"),
                 itemsTable, 
-                discountLabel, 
-                additionalDiscountLabel, 
-                totalLabel, 
-                new javafx.scene.layout.HBox(10, confirmButton, cancelButton)
+                discountGrid,
+                buttonBox
         );
         
         Scene scene = new Scene(vbox, 600, 400);
@@ -268,42 +354,76 @@ public class ClientController {
             return;
         }
         
-        // создатьь новый заказ
-        Order order = new Order();
-        order.setUser(currentUser);
-        order.setOrderDate(LocalDateTime.now());
-        order.setTotalCost(calculateTotalPrice());
-        order.setStatus("В обработке");
+        // Сбрасываем соединение перед оформлением заказа
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
         
-        // Добавить товары в заказ
-        List<OrderItem> items = new ArrayList<>(cartItems);
-        for (OrderItem item : items) {
-            item.setOrder(order);
-        }
-        
-        order.setItems(items);
-        
-        // сохраняем заказ в базе данных
-        boolean success = orderDAO.addOrder(order);
-        
-        if (success) {
-            // проверка скидки
-            if (order.getTotalCost() > 5000 && currentUser.getDiscount() == 0) {
-                // становится постоянным клиентом и скидку
-                currentUser.setDiscount(0.02);
-                userDAO.updateUser(currentUser);
+        try {
+            // Проверяем наличие товаров на складе перед оформлением заказа
+            for (OrderItem item : cartItems) {
+                Product product = productDAO.getProductById(item.getProduct().getId());
+                if (product == null) {
+                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", 
+                            "Товар " + item.getProduct().getName() + " больше не доступен");
+                    return;
+                }
+                
+                if (product.getStockQuantity() < item.getQuantity()) {
+                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", 
+                            "Недостаточно товара " + product.getName() + " на складе. " +
+                            "Доступно: " + product.getStockQuantity() + ", в корзине: " + item.getQuantity());
+                    return;
+                }
+                
+                // Обновляем информацию о товаре в корзине
+                item.setProduct(product);
             }
             
-            view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Заказ успешно оформлен");
+            // создатьь новый заказ
+            Order order = new Order();
+            order.setUser(currentUser);
+            order.setOrderDate(LocalDateTime.now());
             
-            // del корзину
-            cartItems.clear();
-            updateCartView();
+            // Пересчитываем итоговую стоимость с учетом актуальных скидок
+            double totalPrice = calculateTotalPrice();
+            order.setTotalCost(totalPrice);
+            order.setStatus("В обработке");
             
-            // Обновляем историю заказов
-            loadOrderHistory();
-        } else {
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось оформить заказ");
+            // Добавить товары в заказ
+            List<OrderItem> items = new ArrayList<>(cartItems);
+            for (OrderItem item : items) {
+                item.setOrder(order);
+            }
+            
+            order.setItems(items);
+            
+            // сохраняем заказ в базе данных
+            boolean success = orderDAO.addOrder(order);
+            
+            if (success) {
+                // проверка скидки
+                if (order.getTotalCost() > 5000 && currentUser.getDiscount() == 0) {
+                    // становится постоянным клиентом и скидку
+                    currentUser.setDiscount(0.02);
+                    userDAO.updateUser(currentUser);
+                    view.showAlert(Alert.AlertType.INFORMATION, "Поздравляем!", 
+                            "Вы стали постоянным клиентом! Теперь у вас скидка 2% на все заказы.");
+                }
+                
+                view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Заказ успешно оформлен");
+                
+                // del корзину
+                cartItems.clear();
+                updateCartView();
+                
+                // Обновляем историю заказов
+                loadOrderHistory();
+            } else {
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось оформить заказ");
+            }
+        } catch (Exception e) {
+            System.out.println("Ошибка при оформлении заказа: " + e.getMessage());
+            e.printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Произошла ошибка при оформлении заказа: " + e.getMessage());
         }
     }
 

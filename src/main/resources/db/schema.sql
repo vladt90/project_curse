@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 CREATE TABLE IF NOT EXISTS `products` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `name` VARCHAR(100) NOT NULL,
+  `name` VARCHAR(100) NOT NULL UNIQUE,
   `price` DECIMAL(10, 2) NOT NULL,
   `unit` VARCHAR(20) NOT NULL DEFAULT 'шт',
   `stock_quantity` INT NOT NULL DEFAULT 0
@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL,
   `order_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `delivery_date` DATETIME NULL,
   `status` VARCHAR(20) NOT NULL DEFAULT 'Новый',
   `total_price` DECIMAL(10, 2) NOT NULL,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
@@ -53,13 +54,12 @@ INSERT IGNORE INTO `roles` (`id`, `name`) VALUES
 INSERT IGNORE INTO `users` (`login`, `password_hash`, `first_name`, `last_name`, `email`, `role_id`) VALUES 
 ('admin', 'admin', 'Администратор', 'Системы', 'admin@example.com', 1);
 
--- Проверяем, есть ли уже товары в базе данных
+
 SET @product_count = (SELECT COUNT(*) FROM `products`);
 
--- Добавляем товары только если таблица пуста
-INSERT INTO `products` (`name`, `price`, `unit`, `stock_quantity`)
+INSERT IGNORE INTO `products` (`name`, `price`, `unit`, `stock_quantity`)
 SELECT 'Смартфон', 3000.00, 'шт', 15 FROM dual WHERE @product_count = 0
-UNION ALL SELECT 'утюг', 1500.00, 'шт', 8 FROM dual WHERE @product_count = 0
+UNION ALL SELECT 'Утюг', 1500.00, 'шт', 8 FROM dual WHERE @product_count = 0
 UNION ALL SELECT 'Телевизор', 6000.00, 'шт', 5 FROM dual WHERE @product_count = 0
 UNION ALL SELECT 'Кофемашина', 800.50, 'шт', 12 FROM dual WHERE @product_count = 0
 UNION ALL SELECT 'Пульт', 150.00, 'шт', 7 FROM dual WHERE @product_count = 0

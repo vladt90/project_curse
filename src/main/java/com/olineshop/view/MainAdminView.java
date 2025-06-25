@@ -130,7 +130,13 @@ public class MainAdminView {
             }
         });
         
-        buttonPanel.getChildren().addAll(deleteButton);
+        Button deleteAllButton = new Button("Удалить все товары");
+        deleteAllButton.setStyle("-fx-background-color: #ff6b6b; -fx-text-fill: white;");
+        deleteAllButton.setOnAction(e -> {
+            controller.deleteAllProducts();
+        });
+        
+        buttonPanel.getChildren().addAll(deleteButton, deleteAllButton);
         
         vbox.getChildren().addAll(title, productTable, buttonPanel);
         

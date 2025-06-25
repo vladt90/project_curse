@@ -424,6 +424,68 @@ public class ProductDAO {
         }
     }
 
+    //Удалить все товары из базы данных
+    //return true, если товары успешно удалены, иначе false
+    public boolean deleteAllProducts() {
+        String sql = "DELETE FROM products";
+        System.out.println("Удаление всех товаров из базы данных");
+        
+        // Сначала удаляем все записи из таблицы order_items, которые ссылаются на products
+        String deleteOrderItemsSql = "DELETE FROM order_items";
+        
+        // Сбрасываем соединение перед удалением
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+
+        try (Connection conn = DatabaseManager.getConnection()) {
+            if (conn == null) {
+                System.out.println("Ошибка: соединение с базой данных не установлено");
+                return false;
+            }
+            
+            // Сначала удаляем записи из order_items
+            try (PreparedStatement pstmt = conn.prepareStatement(deleteOrderItemsSql)) {
+                System.out.println("Выполнение SQL-запроса: " + deleteOrderItemsSql);
+                pstmt.executeUpdate();
+                System.out.println("Все записи из order_items удалены");
+            } catch (SQLException e) {
+                System.out.println("Ошибка при удалении записей из order_items: " + e.getMessage());
+                System.out.println("SQL State: " + e.getSQLState());
+                System.out.println("Error Code: " + e.getErrorCode());
+                e.printStackTrace();
+                return false;
+            }
+            
+            // Затем удаляем все товары
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                System.out.println("Выполнение SQL-запроса: " + sql);
+                int affectedRows = pstmt.executeUpdate();
+                System.out.println("Удалено товаров: " + affectedRows);
+                
+                // Сбрасываем автоинкремент
+                try (Statement stmt = conn.createStatement()) {
+                    String resetAutoIncrementSql = "ALTER TABLE products AUTO_INCREMENT = 1";
+                    System.out.println("Выполнение SQL-запроса: " + resetAutoIncrementSql);
+                    stmt.execute(resetAutoIncrementSql);
+                    System.out.println("Автоинкремент сброшен");
+                }
+                
+                return true;
+            } catch (SQLException e) {
+                System.out.println("Ошибка при удалении всех товаров: " + e.getMessage());
+                System.out.println("SQL State: " + e.getSQLState());
+                System.out.println("Error Code: " + e.getErrorCode());
+                e.printStackTrace();
+                return false;
+            }
+        } catch (SQLException e) {
+            System.out.println("Ошибка при получении соединения с базой данных: " + e.getMessage());
+            System.out.println("SQL State: " + e.getSQLState());
+            System.out.println("Error Code: " + e.getErrorCode());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     //Извлечь товар из результата запроса
     //rs результат запроса
     //return товар

@@ -101,10 +101,18 @@ public class OrderDAO {
     //order заказ для добавления
     //return true, если заказ успешно добавлен, иначе false
     public boolean addOrder(Order order) {
-        String sql = "INSERT INTO orders (user_id, order_date, delivery_date, total_cost, status) VALUES (?, ?, ?, ?, ?)";
+        // Сбрасываем соединение перед добавлением заказа
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        
+        String sql = "INSERT INTO orders (user_id, order_date, delivery_date, total_price, status) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            if (conn == null) {
+                System.out.println("Ошибка: не удалось получить соединение с базой данных");
+                return false;
+            }
 
             pstmt.setInt(1, order.getUser().getId());
             pstmt.setTimestamp(2, Timestamp.valueOf(order.getOrderDate()));
@@ -118,21 +126,36 @@ public class OrderDAO {
             pstmt.setDouble(4, order.getTotalCost());
             pstmt.setString(5, order.getStatus());
 
+            System.out.println("Выполнение SQL-запроса: " + sql);
+            System.out.println("Параметры: 1=" + order.getUser().getId() + 
+                              ", 2=" + order.getOrderDate() + 
+                              ", 3=" + (order.getDeliveryDate() != null ? order.getDeliveryDate() : "null") + 
+                              ", 4=" + order.getTotalCost() + 
+                              ", 5=" + order.getStatus());
+            
             int affectedRows = pstmt.executeUpdate();
+            System.out.println("Затронуто строк: " + affectedRows);
             
             if (affectedRows > 0) {
                 try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
                         int orderId = generatedKeys.getInt(1);
                         order.setId(orderId);
+                        System.out.println("Заказ добавлен с ID: " + orderId);
                         
                         // Добавляем товары в заказ
                         return addOrderItems(order);
+                    } else {
+                        System.out.println("Не удалось получить ID добавленного заказа");
                     }
                 }
             }
+            System.out.println("Заказ не был добавлен");
             return false;
         } catch (SQLException e) {
+            System.out.println("Ошибка при добавлении заказа: " + e.getMessage());
+            System.out.println("SQL State: " + e.getSQLState());
+            System.out.println("Error Code: " + e.getErrorCode());
             e.printStackTrace();
             return false;
         }
@@ -142,11 +165,19 @@ public class OrderDAO {
     //order заказ с товарами
     //return true, если товары успешно добавлены, иначе false
     private boolean addOrderItems(Order order) {
-        String sql = "INSERT INTO order_items (order_id, product_id, quantity, price_per_item) VALUES (?, ?, ?, ?)";
+        // Исправлено имя колонки с price_per_item на price
+        String sql = "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = DatabaseManager.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
+            if (conn == null) {
+                System.out.println("Ошибка: не удалось получить соединение с базой данных");
+                return false;
+            }
+
+            System.out.println("Добавление товаров в заказ #" + order.getId());
+            
             for (OrderItem item : order.getItems()) {
                 pstmt.setInt(1, order.getId());
                 pstmt.setInt(2, item.getProduct().getId());
@@ -154,15 +185,38 @@ public class OrderDAO {
                 pstmt.setDouble(4, item.getPrice());
                 pstmt.addBatch();
                 
+                System.out.println("Добавление товара: ID=" + item.getProduct().getId() + 
+                                  ", Название=" + item.getProduct().getName() + 
+                                  ", Количество=" + item.getQuantity() + 
+                                  ", Цена=" + item.getPrice());
+                
                 // Уменьшаем количество товара на складе
                 Product product = item.getProduct();
                 int newQuantity = product.getStockQuantity() - item.getQuantity();
-                productDAO.updateProductQuantity(product.getId(), newQuantity);
+                if (newQuantity < 0) {
+                    System.out.println("Ошибка: недостаточное количество товара на складе. ID=" + 
+                                      product.getId() + ", Доступно=" + product.getStockQuantity() + 
+                                      ", Требуется=" + item.getQuantity());
+                    return false;
+                }
+                
+                boolean updated = productDAO.updateProductQuantity(product.getId(), newQuantity);
+                if (!updated) {
+                    System.out.println("Ошибка: не удалось обновить количество товара на складе. ID=" + product.getId());
+                    return false;
+                }
+                
+                // Обновляем количество в объекте товара в памяти
+                product.setStockQuantity(newQuantity);
             }
             
             int[] affectedRows = pstmt.executeBatch();
+            System.out.println("Добавлено товаров в заказ: " + affectedRows.length);
             return affectedRows.length == order.getItems().size();
         } catch (SQLException e) {
+            System.out.println("Ошибка при добавлении товаров в заказ: " + e.getMessage());
+            System.out.println("SQL State: " + e.getSQLState());
+            System.out.println("Error Code: " + e.getErrorCode());
             e.printStackTrace();
             return false;
         }
@@ -271,7 +325,7 @@ public class OrderDAO {
                                 order,
                                 product,
                                 rs.getInt("quantity"),
-                                rs.getDouble("price_per_item"));
+                                rs.getDouble("price"));
                         
                         order.getItems().add(item);
                     }
@@ -295,7 +349,7 @@ public class OrderDAO {
                 user,
                 rs.getTimestamp("order_date").toLocalDateTime(),
                 rs.getTimestamp("delivery_date") != null ? rs.getTimestamp("delivery_date").toLocalDateTime() : null,
-                rs.getDouble("total_cost"),
+                rs.getDouble("total_price"),
                 rs.getString("status"));
         
         return order;

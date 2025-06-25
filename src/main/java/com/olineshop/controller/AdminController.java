@@ -99,7 +99,7 @@ public class AdminController {
                 loadProducts();
             } else {
                 view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось удалить товар");
-                // Пробуем восстановить соединение и перезагрузить список товаров
+                // восстановить соединение и перезагрузить список товаров
                 com.olineshop.util.DatabaseManager.resetConnectionStatus();
                 loadProducts();
             }
@@ -479,5 +479,43 @@ public class AdminController {
         
         LoginView loginView = new LoginView();
         loginView.start(new Stage());
+    }
+
+    // Метод для удаления всех товаров
+    public void deleteAllProducts() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Подтверждение удаления");
+        alert.setHeaderText("Удаление всех товаров");
+        alert.setContentText("Вы действительно хотите удалить ВСЕ товары из базы данных? Это действие нельзя отменить!");
+        
+        Optional<ButtonType> result = alert.showAndWait();
+        
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            // Дополнительное подтверждение
+            Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmAlert.setTitle("Подтверждение удаления");
+            confirmAlert.setHeaderText("ВНИМАНИЕ!");
+            confirmAlert.setContentText("Это приведет к удалению ВСЕХ товаров без возможности восстановления. Вы уверены?");
+            
+            Optional<ButtonType> confirmResult = confirmAlert.showAndWait();
+            
+            if (confirmResult.isPresent() && confirmResult.get() == ButtonType.OK) {
+                // Сбрасываем соединение перед удалением
+                com.olineshop.util.DatabaseManager.resetConnectionStatus();
+                
+                boolean success = productDAO.deleteAllProducts();
+                
+                if (success) {
+                    view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Все товары успешно удалены");
+                    // Перезагружаем список товаров после удаления
+                    loadProducts();
+                } else {
+                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось удалить все товары");
+                    // Восстанавливаем соединение и перезагружаем список товаров
+                    com.olineshop.util.DatabaseManager.resetConnectionStatus();
+                    loadProducts();
+                }
+            }
+        }
     }
 } 
