@@ -54,23 +54,55 @@ public class OrderDAO {
     //userId идентификатор пользователя
     //return список заказов пользователя
     public List<Order> getOrdersByUser(int userId) {
+        System.out.println("Получение заказов для пользователя с ID: " + userId);
         List<Order> orders = new ArrayList<>();
-        String sql = "SELECT * FROM orders WHERE user_id = ?";
-
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, userId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    Order order = extractOrderFromResultSet(rs);
-                    loadOrderItems(order);
-                    orders.add(order);
+        
+        // Сначала получаем все ID заказов пользователя
+        String idSql = "SELECT id FROM orders WHERE user_id = ?";
+        List<Integer> orderIds = new ArrayList<>();
+        
+        try (Connection conn = DatabaseManager.getConnection()) {
+            if (conn == null) {
+                System.out.println("Ошибка: не удалось получить соединение с базой данных");
+                return orders;
+            }
+            
+            System.out.println("Соединение с базой данных получено успешно");
+            
+            try (PreparedStatement pstmt = conn.prepareStatement(idSql)) {
+                pstmt.setInt(1, userId);
+                System.out.println("Выполнение SQL-запроса: " + idSql + " с параметром user_id=" + userId);
+                
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        int orderId = rs.getInt("id");
+                        orderIds.add(orderId);
+                        System.out.println("Найден ID заказа: " + orderId);
+                    }
                 }
             }
         } catch (SQLException e) {
+            System.out.println("Ошибка при получении ID заказов пользователя: " + e.getMessage());
             e.printStackTrace();
+            return orders;
         }
+        
+        System.out.println("Найдено ID заказов: " + orderIds.size());
+        
+        // Теперь для каждого ID получаем полную информацию о заказе
+        for (Integer orderId : orderIds) {
+            try {
+                Order order = getOrderById(orderId);
+                if (order != null) {
+                    orders.add(order);
+                    System.out.println("Добавлен заказ в список: ID=" + order.getId());
+                }
+            } catch (Exception e) {
+                System.out.println("Ошибка при получении заказа по ID=" + orderId + ": " + e.getMessage());
+            }
+        }
+        
+        System.out.println("Всего загружено заказов: " + orders.size());
         return orders;
     }
 
@@ -78,20 +110,67 @@ public class OrderDAO {
     //id идентификатор заказа
     //return заказ или null, если заказ не найден
     public Order getOrderById(int id) {
+        System.out.println("Получение заказа по ID: " + id);
         String sql = "SELECT * FROM orders WHERE id = ?";
 
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, id);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    Order order = extractOrderFromResultSet(rs);
-                    loadOrderItems(order);
-                    return order;
+        try (Connection conn = DatabaseManager.getConnection()) {
+            if (conn == null) {
+                System.out.println("Ошибка: не удалось получить соединение с базой данных");
+                return null;
+            }
+            
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, id);
+                System.out.println("Выполнение SQL-запроса: " + sql + " с параметром id=" + id);
+                
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        // Извлекаем данные из ResultSet
+                        int orderId = rs.getInt("id");
+                        int userId = rs.getInt("user_id");
+                        Timestamp orderDateTimestamp = rs.getTimestamp("order_date");
+                        Timestamp deliveryDateTimestamp = rs.getTimestamp("delivery_date");
+                        double totalCost = rs.getDouble("total_cost");
+                        String status = rs.getString("status");
+                        
+                        // Получаем пользователя
+                        User user = userDAO.getUserById(userId);
+                        
+                        // Создаем объект заказа
+                        Order order = new Order(
+                            orderId,
+                            user,
+                            orderDateTimestamp.toLocalDateTime(),
+                            deliveryDateTimestamp != null ? deliveryDateTimestamp.toLocalDateTime() : null,
+                            totalCost,
+                            status
+                        );
+                        
+                        // Инициализируем список товаров
+                        order.setItems(new ArrayList<>());
+                        
+                        System.out.println("Заказ найден: ID=" + orderId + 
+                                          ", Пользователь=" + (user != null ? user.getLogin() : "null") + 
+                                          ", Дата=" + orderDateTimestamp + 
+                                          ", Сумма=" + totalCost + 
+                                          ", Статус=" + status);
+                        
+                        // Загружаем товары для заказа
+                        try {
+                            loadOrderItems(order);
+                        } catch (Exception e) {
+                            System.out.println("Ошибка при загрузке товаров для заказа ID=" + order.getId() + ": " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                        
+                        return order;
+                    } else {
+                        System.out.println("Заказ с ID=" + id + " не найден");
+                    }
                 }
             }
         } catch (SQLException e) {
+            System.out.println("Ошибка при получении заказа по ID=" + id + ": " + e.getMessage());
             e.printStackTrace();
         }
         return null;
@@ -148,6 +227,7 @@ public class OrderDAO {
                     pstmt.setNull(3, Types.TIMESTAMP);
                 }
                 
+                // getTotalCost для total_cost в БД
                 pstmt.setDouble(4, order.getTotalCost());
                 pstmt.setString(5, order.getStatus());
 
@@ -463,31 +543,56 @@ public class OrderDAO {
     //Загрузить товары для заказа
     //order заказ
     private void loadOrderItems(Order order) {
+        System.out.println("Загрузка товаров для заказа ID=" + order.getId());
+        
+        if (order.getItems() == null) {
+            System.out.println("Инициализация списка товаров для заказа ID=" + order.getId());
+            order.setItems(new ArrayList<>());
+        }
+        
         String sql = "SELECT oi.*, p.name, p.unit FROM order_items oi " +
                      "JOIN products p ON oi.product_id = p.id " +
                      "WHERE oi.order_id = ?";
 
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, order.getId());
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    int productId = rs.getInt("product_id");
-                    Product product = productDAO.getProductById(productId);
-                    
-                    if (product != null) {
-                        OrderItem item = new OrderItem(
-                                order,
-                                product,
-                                rs.getInt("quantity"),
-                                rs.getDouble("price"));
+        try (Connection conn = DatabaseManager.getConnection()) {
+            if (conn == null) {
+                System.out.println("Ошибка: не удалось получить соединение с базой данных при загрузке товаров для заказа");
+                return;
+            }
+            
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, order.getId());
+                System.out.println("Выполнение SQL-запроса для загрузки товаров заказа: " + sql + " с параметром order_id=" + order.getId());
+                
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    int itemCount = 0;
+                    while (rs.next()) {
+                        int productId = rs.getInt("product_id");
+                        Product product = productDAO.getProductById(productId);
                         
-                        order.getItems().add(item);
+                        if (product != null) {
+                            OrderItem item = new OrderItem(
+                                    order,
+                                    product,
+                                    rs.getInt("quantity"),
+                                    rs.getDouble("price_per_item"));
+                            
+                            order.getItems().add(item);
+                            itemCount++;
+                            
+                            System.out.println("Добавлен товар в заказ: ID=" + productId + 
+                                              ", Название=" + product.getName() + 
+                                              ", Количество=" + item.getQuantity() + 
+                                              ", Цена=" + item.getPrice());
+                        } else {
+                            System.out.println("Не удалось найти товар с ID=" + productId + " для заказа ID=" + order.getId());
+                        }
                     }
+                    System.out.println("Всего загружено товаров для заказа ID=" + order.getId() + ": " + itemCount);
                 }
             }
         } catch (SQLException e) {
+            System.out.println("Ошибка при загрузке товаров для заказа ID=" + order.getId() + ": " + e.getMessage());
             e.printStackTrace();
         }
     }

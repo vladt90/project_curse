@@ -596,4 +596,52 @@ public class ProductDAO {
         
         return new Product(id, name, price, unit, stockQuantity);
     }
+
+    //Получить список товаров по их идентификаторам
+    //productIds список идентификаторов товаров
+    //return список найденных товаров
+    public List<Product> getProductsByIds(List<Integer> productIds) {
+        List<Product> products = new ArrayList<>();
+        if (productIds == null || productIds.isEmpty()) {
+            return products;
+        }
+        
+        // Создаем SQL запрос с параметрами IN
+        StringBuilder sql = new StringBuilder("SELECT * FROM products WHERE id IN (");
+        for (int i = 0; i < productIds.size(); i++) {
+            sql.append("?");
+            if (i < productIds.size() - 1) {
+                sql.append(",");
+            }
+        }
+        sql.append(")");
+        
+        System.out.println("Получение товаров по ID: " + productIds);
+        
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            
+            // Устанавливаем параметры запроса
+            for (int i = 0; i < productIds.size(); i++) {
+                pstmt.setInt(i + 1, productIds.get(i));
+            }
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Product product = extractProductFromResultSet(rs);
+                    products.add(product);
+                    System.out.println("Найден товар: ID=" + product.getId() + 
+                                      ", Название=" + product.getName() + 
+                                      ", Количество=" + product.getStockQuantity());
+                }
+            }
+            
+            System.out.println("Всего найдено товаров: " + products.size());
+        } catch (SQLException e) {
+            System.out.println("Ошибка при получении товаров по ID: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return products;
+    }
 } 

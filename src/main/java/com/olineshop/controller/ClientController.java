@@ -24,7 +24,11 @@ import com.olineshop.view.MainClientView;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 
 
  //Конт для клиентов
@@ -118,24 +122,127 @@ public class ClientController {
         }
     }
 
-    // для истории бож (главное не забыть!!!!)
+    // для истории заказов
     public void loadOrderHistory() {
         // Сбрасываем соединение перед загрузкой истории заказов
         com.olineshop.util.DatabaseManager.resetConnectionStatus();
         
         try {
             orders.clear();
-            List<Order> userOrders = orderDAO.getOrdersByUser(currentUser.getId());
             
-            // Сортировка заказов по дате (от новых к старым)
-            userOrders.sort((o1, o2) -> o2.getOrderDate().compareTo(o1.getOrderDate()));
+            // Получаем заказы пользователя напрямую из базы данных
+            String sql = "SELECT * FROM orders WHERE user_id = ?";
+            List<Order> userOrders = new ArrayList<>();
             
-            orders.addAll(userOrders);
-            view.updateOrderHistoryTable(orders);
+            try (Connection conn = com.olineshop.util.DatabaseManager.getConnection()) {
+                if (conn == null) {
+                    System.out.println("Ошибка: не удалось получить соединение с базой данных");
+                    view.updateOrderHistoryTable(FXCollections.observableArrayList());
+                    return;
+                }
+                
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setInt(1, currentUser.getId());
+                    System.out.println("Загрузка заказов для пользователя ID=" + currentUser.getId());
+                    
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        while (rs.next()) {
+                            int orderId = rs.getInt("id");
+                            Timestamp orderDateTimestamp = rs.getTimestamp("order_date");
+                            Timestamp deliveryDateTimestamp = rs.getTimestamp("delivery_date");
+                            double totalCost = rs.getDouble("total_cost");
+                            String status = rs.getString("status");
+                            
+                            System.out.println("Найден заказ: ID=" + orderId + 
+                                              ", Дата=" + orderDateTimestamp + 
+                                              ", Сумма=" + totalCost + 
+                                              ", Статус=" + status);
+                            
+                            // Создаем объект заказа
+                            Order order = new Order(
+                                orderId,
+                                currentUser,
+                                orderDateTimestamp.toLocalDateTime(),
+                                deliveryDateTimestamp != null ? deliveryDateTimestamp.toLocalDateTime() : null,
+                                totalCost,
+                                status
+                            );
+                            
+                            // Инициализируем список товаров
+                            order.setItems(new ArrayList<>());
+                            
+                            // Загружаем товары для заказа
+                            loadOrderItemsForOrder(order, conn);
+                            
+                            userOrders.add(order);
+                        }
+                    }
+                }
+            }
+            
+            // Проверяем, что список заказов не пуст
+            if (!userOrders.isEmpty()) {
+                // Сортировка заказов по дате (от новых к старым)
+                userOrders.sort((o1, o2) -> o2.getOrderDate().compareTo(o1.getOrderDate()));
+                
+                orders.addAll(userOrders);
+                view.updateOrderHistoryTable(orders);
+                
+                System.out.println("История заказов успешно загружена. Количество заказов: " + orders.size());
+            } else {
+                System.out.println("История заказов пуста или не удалось загрузить заказы");
+                view.updateOrderHistoryTable(FXCollections.observableArrayList());
+            }
         } catch (Exception e) {
             System.out.println("Ошибка при загрузке истории заказов: " + e.getMessage());
             e.printStackTrace();
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось загрузить историю заказов: " + e.getMessage());
+            
+            // Обновляем таблицу пустым списком, чтобы избежать ошибок в UI
+            view.updateOrderHistoryTable(FXCollections.observableArrayList());
+            
+            // Не показываем пользователю ошибку, просто логируем её
+            // view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось загрузить историю заказов: " + e.getMessage());
+        }
+    }
+    
+    // Загрузка товаров для заказа
+    private void loadOrderItemsForOrder(Order order, Connection conn) {
+        String sql = "SELECT oi.*, p.name, p.unit FROM order_items oi " +
+                     "JOIN products p ON oi.product_id = p.id " +
+                     "WHERE oi.order_id = ?";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, order.getId());
+            System.out.println("Загрузка товаров для заказа ID=" + order.getId());
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    int productId = rs.getInt("product_id");
+                    int quantity = rs.getInt("quantity");
+                    double price = rs.getDouble("price_per_item");
+                    String productName = rs.getString("name");
+                    String unit = rs.getString("unit");
+                    
+                    System.out.println("Найден товар в заказе: ID=" + productId + 
+                                      ", Название=" + productName + 
+                                      ", Количество=" + quantity + 
+                                      ", Цена=" + price);
+                    
+                    // Создаем временный объект товара
+                    Product product = new Product();
+                    product.setId(productId);
+                    product.setName(productName);
+                    product.setPrice(price);
+                    product.setUnit(unit);
+                    
+                    OrderItem item = new OrderItem(order, product, quantity, price);
+                    order.getItems().add(item);
+                }
+            }
+            
+            System.out.println("Загружено товаров для заказа ID=" + order.getId() + ": " + order.getItems().size());
+        } catch (SQLException e) {
+            System.out.println("Ошибка при загрузке товаров для заказа ID=" + order.getId() + ": " + e.getMessage());
         }
     }
 
@@ -385,13 +492,30 @@ public class ClientController {
         try {
             System.out.println("Начало оформления заказа...");
             
+                    // Сначала получаем все товары из базы данных за одно соединение
+        List<Product> productsFromDB = new ArrayList<>();
+        try {
+            // Получаем все ID товаров из корзины
+            List<Integer> productIds = cartItems.stream()
+                .map(item -> item.getProduct().getId())
+                .collect(java.util.stream.Collectors.toList());
+            
+            // Получаем все товары за один запрос
+            productsFromDB = productDAO.getProductsByIds(productIds);
+            
+            // Создаем карту для быстрого доступа к товарам по ID
+            java.util.Map<Integer, Product> productMap = new java.util.HashMap<>();
+            for (Product product : productsFromDB) {
+                productMap.put(product.getId(), product);
+            }
+            
             // Проверяем наличие товаров на складе перед оформлением заказа
             for (OrderItem item : cartItems) {
                 System.out.println("Проверка товара: ID=" + item.getProduct().getId() + 
                                   ", Название=" + item.getProduct().getName() + 
                                   ", Количество в корзине=" + item.getQuantity());
                 
-                Product product = productDAO.getProductById(item.getProduct().getId());
+                Product product = productMap.get(item.getProduct().getId());
                 if (product == null) {
                     String errorMsg = "Товар " + item.getProduct().getName() + " больше не доступен";
                     System.out.println("Ошибка: " + errorMsg);
@@ -415,6 +539,12 @@ public class ClientController {
                 item.setProduct(product);
                 System.out.println("Информация о товаре в корзине обновлена");
             }
+        } catch (Exception e) {
+            System.out.println("Ошибка при получении товаров из базы данных: " + e.getMessage());
+            e.printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Произошла ошибка при проверке товаров: " + e.getMessage());
+            return;
+        }
             
             // создаем новый заказ
             System.out.println("Создание нового заказа...");
