@@ -4,8 +4,11 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -23,44 +26,79 @@ public class LoginView {
 
         primaryStage.setTitle("Интернет-магазин - Вход в систему");
 
-        GridPane grid = new GridPane();
-        grid.setAlignment(Pos.CENTER);
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(25, 25, 25, 25));
+        // Создаем основной контейнер с отступами
+        VBox mainContainer = new VBox(20);
+        mainContainer.setPadding(new Insets(30));
+        mainContainer.setAlignment(Pos.CENTER);
+        mainContainer.setStyle("-fx-background-color: #f5f5f5;");
 
+        // Заголовок с тенью
         Text sceneTitle = new Text("Добро пожаловать");
-        sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-        grid.add(sceneTitle, 0, 0, 2, 1);
+        sceneTitle.setFont(Font.font("Segoe UI", FontWeight.BOLD, 28));
+        sceneTitle.setFill(Color.web("#2c3e50"));
+        
+        // Добавляем эффект тени
+        DropShadow dropShadow = new DropShadow();
+        dropShadow.setRadius(3.0);
+        dropShadow.setOffsetX(2.0);
+        dropShadow.setOffsetY(2.0);
+        dropShadow.setColor(Color.color(0.4, 0.4, 0.4, 0.3));
+        sceneTitle.setEffect(dropShadow);
 
-        Label loginLabel = new Label("Логин:");
-        grid.add(loginLabel, 0, 1);
+        // Создаем форму для входа
+        VBox loginForm = new VBox(15);
+        loginForm.setAlignment(Pos.CENTER);
+        loginForm.setPadding(new Insets(20));
+        loginForm.setMaxWidth(350);
+        loginForm.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);");
 
+        // Поле для логина
         TextField loginTextField = new TextField();
-        grid.add(loginTextField, 1, 1);
+        loginTextField.setPromptText("Введите логин");
+        loginTextField.setPrefHeight(40);
+        loginTextField.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #dcdcdc; -fx-border-width: 1;");
 
-        Label passwordLabel = new Label("Пароль:");
-        grid.add(passwordLabel, 0, 2);
-
+        // Поле для пароля
         PasswordField passwordField = new PasswordField();
-        grid.add(passwordField, 1, 2);
+        passwordField.setPromptText("Введите пароль");
+        passwordField.setPrefHeight(40);
+        passwordField.setStyle("-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #dcdcdc; -fx-border-width: 1;");
 
+        // Кнопка входа
         Button loginButton = new Button("Войти");
+        loginButton.setPrefHeight(40);
+        loginButton.setPrefWidth(320);
         loginButton.setDefaultButton(true);
-        HBox hbBtn = new HBox(10);
-        hbBtn.setAlignment(Pos.BOTTOM_RIGHT);
-        hbBtn.getChildren().add(loginButton);
-        grid.add(hbBtn, 1, 4);
+        loginButton.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
+        
+        // Эффект при наведении на кнопку
+        loginButton.setOnMouseEntered(e -> loginButton.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;"));
+        loginButton.setOnMouseExited(e -> loginButton.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;"));
 
+        // Кнопка регистрации
         Button registerButton = new Button("Регистрация");
-        HBox hbRegBtn = new HBox(10);
-        hbRegBtn.setAlignment(Pos.BOTTOM_LEFT);
-        hbRegBtn.getChildren().add(registerButton);
-        grid.add(hbRegBtn, 0, 4);
+        registerButton.setPrefHeight(40);
+        registerButton.setPrefWidth(320);
+        registerButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #3498db; -fx-border-color: #3498db; -fx-border-width: 1; -fx-background-radius: 5; -fx-border-radius: 5;");
+        
+        // Эффект при наведении на кнопку регистрации
+        registerButton.setOnMouseEntered(e -> registerButton.setStyle("-fx-background-color: #f5f5f5; -fx-text-fill: #3498db; -fx-border-color: #3498db; -fx-border-width: 1; -fx-background-radius: 5; -fx-border-radius: 5;"));
+        registerButton.setOnMouseExited(e -> registerButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #3498db; -fx-border-color: #3498db; -fx-border-width: 1; -fx-background-radius: 5; -fx-border-radius: 5;"));
 
+        // Текст для сообщений об ошибках
         final Text actionTarget = new Text();
-        grid.add(actionTarget, 1, 6);
+        actionTarget.setFill(Color.FIREBRICK);
 
+        // Добавляем все элементы в форму
+        loginForm.getChildren().addAll(
+                new Label("Логин:"), loginTextField,
+                new Label("Пароль:"), passwordField,
+                loginButton,
+                registerButton,
+                actionTarget
+        );
+
+        // Обработчики событий
         loginButton.setOnAction(e -> {
             actionTarget.setText("");
             controller.handleLogin(loginTextField.getText(), passwordField.getText());
@@ -71,7 +109,10 @@ public class LoginView {
             controller.showRegistrationWindow();
         });
 
-        Scene scene = new Scene(grid, 400, 300);
+        // Добавляем все в основной контейнер
+        mainContainer.getChildren().addAll(sceneTitle, loginForm);
+
+        Scene scene = new Scene(mainContainer, 450, 500);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -82,6 +123,17 @@ public class LoginView {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        
+        // Стилизация диалогового окна
+        DialogPane dialogPane = alert.getDialogPane();
+        dialogPane.setStyle("-fx-background-color: white; -fx-border-color: #dddddd; -fx-border-width: 1;");
+        
+        // Стилизация кнопок
+        dialogPane.getButtonTypes().forEach(buttonType -> {
+            Button button = (Button) dialogPane.lookupButton(buttonType);
+            button.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-background-radius: 5;");
+        });
+        
         alert.showAndWait();
     }
 } 

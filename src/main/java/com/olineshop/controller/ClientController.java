@@ -265,6 +265,11 @@ public class ClientController {
         view.updateCartTable(cartItems, totalPrice);
     }
 
+    // Обновить корзину
+    public void updateCart() {
+        updateCartView();
+    }
+
     //рассчет суммы
     private double calculateTotalPrice() {
         double subtotal = 0.0;

@@ -4,8 +4,11 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
@@ -23,74 +26,130 @@ public class RegisterView {
 
         primaryStage.setTitle("Интернет-магазин - Регистрация");
 
-        GridPane grid = new GridPane();
-        grid.setAlignment(Pos.CENTER);
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(25, 25, 25, 25));
+        // Создаем основной контейнер с отступами
+        VBox mainContainer = new VBox(20);
+        mainContainer.setPadding(new Insets(30));
+        mainContainer.setAlignment(Pos.CENTER);
+        mainContainer.setStyle("-fx-background-color: #f5f5f5;");
 
+        // Заголовок с тенью
         Text sceneTitle = new Text("Регистрация нового пользователя");
-        sceneTitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-        grid.add(sceneTitle, 0, 0, 2, 1);
+        sceneTitle.setFont(Font.font("Segoe UI", FontWeight.BOLD, 24));
+        sceneTitle.setFill(Color.web("#2c3e50"));
+        
+        // Добавляем эффект тени
+        DropShadow dropShadow = new DropShadow();
+        dropShadow.setRadius(3.0);
+        dropShadow.setOffsetX(2.0);
+        dropShadow.setOffsetY(2.0);
+        dropShadow.setColor(Color.color(0.4, 0.4, 0.4, 0.3));
+        sceneTitle.setEffect(dropShadow);
 
+        // Создаем форму для регистрации
+        VBox registerForm = new VBox(12);
+        registerForm.setAlignment(Pos.CENTER);
+        registerForm.setPadding(new Insets(25));
+        registerForm.setMaxWidth(450);
+        registerForm.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);");
+
+        // Стиль для всех текстовых полей
+        String textFieldStyle = "-fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #dcdcdc; -fx-border-width: 1; -fx-padding: 8;";
+
+        // Поле для логина
         Label loginLabel = new Label("Логин:");
-        grid.add(loginLabel, 0, 1);
-
+        loginLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         TextField loginTextField = new TextField();
-        grid.add(loginTextField, 1, 1);
+        loginTextField.setPromptText("Введите логин");
+        loginTextField.setStyle(textFieldStyle);
 
+        // Поле для пароля
         Label passwordLabel = new Label("Пароль:");
-        grid.add(passwordLabel, 0, 2);
-
+        passwordLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         PasswordField passwordField = new PasswordField();
-        grid.add(passwordField, 1, 2);
+        passwordField.setPromptText("Введите пароль");
+        passwordField.setStyle(textFieldStyle);
 
+        // Поле для подтверждения пароля
         Label confirmPasswordLabel = new Label("Подтверждение пароля:");
-        grid.add(confirmPasswordLabel, 0, 3);
-
+        confirmPasswordLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         PasswordField confirmPasswordField = new PasswordField();
-        grid.add(confirmPasswordField, 1, 3);
+        confirmPasswordField.setPromptText("Подтвердите пароль");
+        confirmPasswordField.setStyle(textFieldStyle);
 
+        // Поле для имени
         Label firstNameLabel = new Label("Имя:");
-        grid.add(firstNameLabel, 0, 4);
-
+        firstNameLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         TextField firstNameTextField = new TextField();
-        grid.add(firstNameTextField, 1, 4);
+        firstNameTextField.setPromptText("Введите имя");
+        firstNameTextField.setStyle(textFieldStyle);
 
+        // Поле для фамилии
         Label lastNameLabel = new Label("Фамилия:");
-        grid.add(lastNameLabel, 0, 5);
-
+        lastNameLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         TextField lastNameTextField = new TextField();
-        grid.add(lastNameTextField, 1, 5);
+        lastNameTextField.setPromptText("Введите фамилию");
+        lastNameTextField.setStyle(textFieldStyle);
 
+        // Поле для email
         Label emailLabel = new Label("Email:");
-        grid.add(emailLabel, 0, 6);
-
+        emailLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         TextField emailTextField = new TextField();
-        grid.add(emailTextField, 1, 6);
+        emailTextField.setPromptText("Введите email");
+        emailTextField.setStyle(textFieldStyle);
 
+        // Поле для телефона
         Label phoneLabel = new Label("Телефон:");
-        grid.add(phoneLabel, 0, 7);
-
+        phoneLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         TextField phoneTextField = new TextField();
-        grid.add(phoneTextField, 1, 7);
+        phoneTextField.setPromptText("Введите телефон");
+        phoneTextField.setStyle(textFieldStyle);
 
+        // Кнопки
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.setPadding(new Insets(15, 0, 0, 0));
+
+        // Кнопка регистрации
         Button registerButton = new Button("Зарегистрироваться");
+        registerButton.setPrefHeight(40);
+        registerButton.setPrefWidth(200);
         registerButton.setDefaultButton(true);
-        HBox hbBtn = new HBox(10);
-        hbBtn.setAlignment(Pos.BOTTOM_RIGHT);
-        hbBtn.getChildren().add(registerButton);
-        grid.add(hbBtn, 1, 9);
+        registerButton.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
+        
+        // Эффект при наведении на кнопку
+        registerButton.setOnMouseEntered(e -> registerButton.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;"));
+        registerButton.setOnMouseExited(e -> registerButton.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;"));
 
+        // Кнопка назад
         Button backButton = new Button("Назад");
-        HBox hbBackBtn = new HBox(10);
-        hbBackBtn.setAlignment(Pos.BOTTOM_LEFT);
-        hbBackBtn.getChildren().add(backButton);
-        grid.add(hbBackBtn, 0, 9);
+        backButton.setPrefHeight(40);
+        backButton.setPrefWidth(120);
+        backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #3498db; -fx-border-color: #3498db; -fx-border-width: 1; -fx-background-radius: 5; -fx-border-radius: 5;");
+        
+        // Эффект при наведении на кнопку назад
+        backButton.setOnMouseEntered(e -> backButton.setStyle("-fx-background-color: #f5f5f5; -fx-text-fill: #3498db; -fx-border-color: #3498db; -fx-border-width: 1; -fx-background-radius: 5; -fx-border-radius: 5;"));
+        backButton.setOnMouseExited(e -> backButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #3498db; -fx-border-color: #3498db; -fx-border-width: 1; -fx-background-radius: 5; -fx-border-radius: 5;"));
 
+        buttonBox.getChildren().addAll(backButton, registerButton);
+
+        // Текст для сообщений об ошибках
         final Text actionTarget = new Text();
-        grid.add(actionTarget, 1, 11);
+        actionTarget.setFill(Color.FIREBRICK);
 
+        // Добавляем все элементы в форму
+        registerForm.getChildren().addAll(
+                loginLabel, loginTextField,
+                passwordLabel, passwordField,
+                confirmPasswordLabel, confirmPasswordField,
+                firstNameLabel, firstNameTextField,
+                lastNameLabel, lastNameTextField,
+                emailLabel, emailTextField,
+                phoneLabel, phoneTextField,
+                buttonBox,
+                actionTarget
+        );
+
+        // Обработчики событий
         registerButton.setOnAction(e -> {
             actionTarget.setText("");
             controller.handleRegister(
@@ -107,7 +166,10 @@ public class RegisterView {
             controller.showLoginWindow();
         });
 
-        Scene scene = new Scene(grid, 500, 500);
+        // Добавляем все в основной контейнер
+        mainContainer.getChildren().addAll(sceneTitle, registerForm);
+
+        Scene scene = new Scene(mainContainer, 550, 700);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -118,6 +180,17 @@ public class RegisterView {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        
+        // Стилизация диалогового окна
+        DialogPane dialogPane = alert.getDialogPane();
+        dialogPane.setStyle("-fx-background-color: white; -fx-border-color: #dddddd; -fx-border-width: 1;");
+        
+        // Стилизация кнопок
+        dialogPane.getButtonTypes().forEach(buttonType -> {
+            Button button = (Button) dialogPane.lookupButton(buttonType);
+            button.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-background-radius: 5;");
+        });
+        
         alert.showAndWait();
     }
 } 
