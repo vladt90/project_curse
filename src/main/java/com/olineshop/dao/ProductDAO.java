@@ -19,21 +19,28 @@ public class ProductDAO {
     //return список товаров
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM products";
+        String sql = "SELECT * FROM products ORDER BY id DESC";
         System.out.println("Получение всех товаров из базы данных");
+        
+        // Сбрасываем соединение перед выполнением запроса
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
 
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                ResultSet rs = pstmt.executeQuery()) {
-
+        try (Connection conn = DatabaseManager.getConnection()) {
             if (conn == null) {
                 System.out.println("Ошибка: соединение с базой данных не установлено");
                 return products;
             }
-
-            System.out.println("Выполнение SQL-запроса: " + sql);
-            while (rs.next()) {
-                products.add(extractProductFromResultSet(rs));
+            
+            // Устанавливаем ограничение на количество возвращаемых строк для улучшения производительности
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setFetchSize(100); // Оптимизация для больших наборов данных
+                
+                System.out.println("Выполнение SQL-запроса: " + sql);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        products.add(extractProductFromResultSet(rs));
+                    }
+                }
             }
             System.out.println("Всего найдено товаров: " + products.size());
         } catch (SQLException e) {
@@ -65,68 +72,38 @@ public class ProductDAO {
         return products;
     }
 
-    //Найти товары по названию (поиск по части названия, без учета регистра)
-    //searchTerm строка для поиска
-    //return список найденных товаров
-    public List<Product> searchProductsByName(String searchTerm) {
-        List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM products WHERE LOWER(name) LIKE ?";
-
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, "%" + searchTerm.toLowerCase() + "%");
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    products.add(extractProductFromResultSet(rs));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return products;
-    }
-
-    //Фильтровать товары по диапазону цен
-    //minPrice мин
-    //maxPrice макс
-
-    public List<Product> filterProductsByPrice(double minPrice, double maxPrice) {
-        List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM products WHERE price >= ? AND price <= ?";
-
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setDouble(1, minPrice);
-            pstmt.setDouble(2, maxPrice);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    products.add(extractProductFromResultSet(rs));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return products;
-    }
-
     //Получить товар по идентификатору
     //id идентификатор товара
     //return товар или null, если товар не найден
     public Product getProductById(int id) {
         String sql = "SELECT * FROM products WHERE id = ?";
+        System.out.println("Получение товара по ID: " + id);
+        
+        // Сбрасываем соединение перед выполнением запроса
+        com.olineshop.util.DatabaseManager.resetConnectionStatus();
 
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, id);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return extractProductFromResultSet(rs);
+        try (Connection conn = DatabaseManager.getConnection()) {
+            if (conn == null) {
+                System.out.println("Ошибка: не удалось получить соединение с базой данных при получении товара по ID");
+                return null;
+            }
+            
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, id);
+                System.out.println("Выполнение SQL-запроса: " + sql + " с параметром id=" + id);
+                
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        Product product = extractProductFromResultSet(rs);
+                        System.out.println("Товар найден: ID=" + product.getId() + ", Название=" + product.getName());
+                        return product;
+                    } else {
+                        System.out.println("Товар с ID=" + id + " не найден");
+                    }
                 }
             }
         } catch (SQLException e) {
+            System.out.println("Ошибка при получении товара по ID=" + id + ": " + e.getMessage());
             e.printStackTrace();
         }
         return null;
@@ -511,68 +488,6 @@ public class ProductDAO {
             return affectedRows > 0;
         } catch (SQLException e) {
             System.out.println("Ошибка при удалении товара: " + e.getMessage());
-            System.out.println("SQL State: " + e.getSQLState());
-            System.out.println("Error Code: " + e.getErrorCode());
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    //Удалить все товары из базы данных
-    //return true, если товары успешно удалены, иначе false
-    public boolean deleteAllProducts() {
-        String sql = "DELETE FROM products";
-        System.out.println("Удаление всех товаров из базы данных");
-        
-        // Сначала удаляем все записи из таблицы order_items, которые ссылаются на products
-        String deleteOrderItemsSql = "DELETE FROM order_items";
-        
-        // Сбрасываем соединение перед удалением
-        com.olineshop.util.DatabaseManager.resetConnectionStatus();
-
-        try (Connection conn = DatabaseManager.getConnection()) {
-            if (conn == null) {
-                System.out.println("Ошибка: соединение с базой данных не установлено");
-                return false;
-            }
-            
-            // Сначала удаляем записи из order_items
-            try (PreparedStatement pstmt = conn.prepareStatement(deleteOrderItemsSql)) {
-                System.out.println("Выполнение SQL-запроса: " + deleteOrderItemsSql);
-                pstmt.executeUpdate();
-                System.out.println("Все записи из order_items удалены");
-            } catch (SQLException e) {
-                System.out.println("Ошибка при удалении записей из order_items: " + e.getMessage());
-                System.out.println("SQL State: " + e.getSQLState());
-                System.out.println("Error Code: " + e.getErrorCode());
-                e.printStackTrace();
-                return false;
-            }
-            
-            // Затем удаляем все товары
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                System.out.println("Выполнение SQL-запроса: " + sql);
-                int affectedRows = pstmt.executeUpdate();
-                System.out.println("Удалено товаров: " + affectedRows);
-                
-                // Сбрасываем автоинкремент
-                try (Statement stmt = conn.createStatement()) {
-                    String resetAutoIncrementSql = "ALTER TABLE products AUTO_INCREMENT = 1";
-                    System.out.println("Выполнение SQL-запроса: " + resetAutoIncrementSql);
-                    stmt.execute(resetAutoIncrementSql);
-                    System.out.println("Автоинкремент сброшен");
-                }
-                
-                return true;
-            } catch (SQLException e) {
-                System.out.println("Ошибка при удалении всех товаров: " + e.getMessage());
-                System.out.println("SQL State: " + e.getSQLState());
-                System.out.println("Error Code: " + e.getErrorCode());
-                e.printStackTrace();
-                return false;
-            }
-        } catch (SQLException e) {
-            System.out.println("Ошибка при получении соединения с базой данных: " + e.getMessage());
             System.out.println("SQL State: " + e.getSQLState());
             System.out.println("Error Code: " + e.getErrorCode());
             e.printStackTrace();

@@ -8,6 +8,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -17,6 +18,7 @@ import com.olineshop.controller.AdminController;
 import com.olineshop.model.Order;
 import com.olineshop.model.Product;
 import com.olineshop.model.User;
+import javafx.scene.control.ProgressIndicator;
 
 //Класс представления главного окна административной части приложения
 public class MainAdminView {
@@ -24,6 +26,7 @@ public class MainAdminView {
     private TableView<Product> productTable;
     private TableView<User> userTable;
     private TableView<Order> orderTable;
+    private ProgressIndicator loadingIndicator;
 
     //Запустить главное окно административной части
     //primaryStage главное окно приложения
@@ -56,15 +59,42 @@ public class MainAdminView {
         
         tabPane.getTabs().addAll(productsTab, usersTab, ordersTab);
         
+        // Добавляем обработчик события переключения вкладок
+        tabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldTab, newTab) -> {
+            if (newTab == productsTab) {
+                controller.loadProducts();
+            } else if (newTab == usersTab) {
+                controller.loadUsers();
+            } else if (newTab == ordersTab) {
+                controller.loadOrders();
+            }
+        });
+        
         borderPane.setCenter(tabPane);
+        
+        // Создаем индикатор загрузки
+        loadingIndicator = new ProgressIndicator();
+        loadingIndicator.setVisible(false);
+        loadingIndicator.setMaxSize(100, 100);
+        
+        // Создаем контейнер для индикатора загрузки
+        StackPane stackPane = new StackPane();
+        stackPane.getChildren().addAll(borderPane, loadingIndicator);
+        StackPane.setAlignment(loadingIndicator, javafx.geometry.Pos.CENTER);
 
-        Scene scene = new Scene(borderPane, 900, 700);
+        Scene scene = new Scene(stackPane, 900, 700);
         primaryStage.setScene(scene);
         primaryStage.show();
         
-        controller.loadProducts();
-        controller.loadUsers();
-        controller.loadOrders();
+        // Загружаем данные только для активной вкладки при запуске
+        Tab selectedTab = tabPane.getSelectionModel().getSelectedItem();
+        if (selectedTab == productsTab) {
+            controller.loadProducts();
+        } else if (selectedTab == usersTab) {
+            controller.loadUsers();
+        } else if (selectedTab == ordersTab) {
+            controller.loadOrders();
+        }
     }
 
     //Создать верхнюю панель
@@ -130,13 +160,7 @@ public class MainAdminView {
             }
         });
         
-        Button deleteAllButton = new Button("Удалить все товары");
-        deleteAllButton.setStyle("-fx-background-color: #ff6b6b; -fx-text-fill: white;");
-        deleteAllButton.setOnAction(e -> {
-            controller.deleteAllProducts();
-        });
-        
-        buttonPanel.getChildren().addAll(deleteButton, deleteAllButton);
+        buttonPanel.getChildren().addAll(deleteButton);
         
         vbox.getChildren().addAll(title, productTable, buttonPanel);
         
@@ -188,31 +212,7 @@ public class MainAdminView {
         userTable.getColumns().addAll(idColumn, loginColumn, firstNameColumn, lastNameColumn, 
                 emailColumn, phoneColumn, discountColumn, roleColumn);
         
-        HBox buttonPanel = new HBox(10);
-        
-        Button viewDetailsButton = new Button("Подробнее");
-        viewDetailsButton.setOnAction(e -> {
-            User selectedUser = userTable.getSelectionModel().getSelectedItem();
-            if (selectedUser != null) {
-                controller.showUserDetails(selectedUser);
-            } else {
-                showAlert(Alert.AlertType.WARNING, "Предупреждение", "Выберите пользователя для просмотра");
-            }
-        });
-        
-        Button deleteUserButton = new Button("Удалить");
-        deleteUserButton.setOnAction(e -> {
-            User selectedUser = userTable.getSelectionModel().getSelectedItem();
-            if (selectedUser != null) {
-                controller.deleteUser(selectedUser.getId());
-            } else {
-                showAlert(Alert.AlertType.WARNING, "Предупреждение", "Выберите пользователя для удаления");
-            }
-        });
-        
-        buttonPanel.getChildren().addAll(viewDetailsButton, deleteUserButton);
-        
-        vbox.getChildren().addAll(title, userTable, buttonPanel);
+        vbox.getChildren().addAll(title, userTable);
         
         return vbox;
     }
@@ -241,7 +241,7 @@ public class MainAdminView {
         TableColumn<Order, String> orderDateColumn = new TableColumn<>("Дата заказа");
         orderDateColumn.setCellValueFactory(cellData -> {
             return new javafx.beans.property.SimpleStringProperty(
-                    cellData.getValue().getOrderDate().toString());
+                    cellData.getValue().getOrderDate().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
         });
         orderDateColumn.setPrefWidth(150);
         
@@ -249,7 +249,7 @@ public class MainAdminView {
         deliveryDateColumn.setCellValueFactory(cellData -> {
             java.time.LocalDateTime deliveryDate = cellData.getValue().getDeliveryDate();
             return new javafx.beans.property.SimpleStringProperty(
-                    deliveryDate != null ? deliveryDate.toString() : "Не указана");
+                    deliveryDate != null ? deliveryDate.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "Не указана");
         });
         deliveryDateColumn.setPrefWidth(150);
         
@@ -326,5 +326,13 @@ public class MainAdminView {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    //Показать или скрыть индикатор загрузки
+    //show true - показать, false - скрыть
+    public void showLoadingIndicator(boolean show) {
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisible(show);
+        }
     }
 } 

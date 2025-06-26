@@ -41,6 +41,9 @@ public class Main extends Application {
                 // Проверяем наличие данных в таблицах
                 checkDatabaseData(connection);
                 
+                // Обновляем структуру базы данных
+                updateDatabaseSchema(connection);
+                
                 // Выполняем тестовый запрос для проверки работы с базой данных
                 testDatabaseQuery(connection);
             } else {
@@ -144,7 +147,7 @@ public class Main extends Application {
                 "  `order_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
                 "  `delivery_date` DATETIME NULL," +
                 "  `status` VARCHAR(20) NOT NULL DEFAULT 'Новый'," +
-                "  `total_price` DECIMAL(10, 2) NOT NULL," +
+                "  `total_cost` DECIMAL(10, 2) NOT NULL," +
                 "  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)" +
                 ")";
             stmt.executeUpdate(createOrdersTable);
@@ -157,7 +160,7 @@ public class Main extends Application {
                 "  `order_id` INT NOT NULL," +
                 "  `product_id` INT NOT NULL," +
                 "  `quantity` INT NOT NULL," +
-                "  `price` DECIMAL(10, 2) NOT NULL," +
+                "  `price_per_item` DECIMAL(10, 2) NOT NULL," +
                 "  FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`)," +
                 "  FOREIGN KEY (`product_id`) REFERENCES `products`(`id`)" +
                 ")";
@@ -325,6 +328,52 @@ public class Main extends Application {
             System.out.println("Ошибка при тестировании запросов к базе данных: " + e.getMessage());
             System.out.println("SQL State: " + e.getSQLState());
             System.out.println("Error Code: " + e.getErrorCode());
+            e.printStackTrace();
+        }
+    }
+
+    private void updateDatabaseSchema(Connection connection) {
+        System.out.println("Обновление структуры базы данных...");
+        
+        try {
+            // Проверяем, существует ли столбец total_price в таблице orders
+            DatabaseMetaData metaData = connection.getMetaData();
+            ResultSet columns = metaData.getColumns(null, null, "orders", "total_price");
+            
+            if (columns.next()) {
+                // Столбец total_price существует, меняем его на total_cost
+                try (Statement stmt = connection.createStatement()) {
+                    String alterOrdersTable = "ALTER TABLE orders CHANGE COLUMN total_price total_cost DECIMAL(10, 2) NOT NULL";
+                    stmt.executeUpdate(alterOrdersTable);
+                    System.out.println("Таблица orders успешно обновлена (total_price -> total_cost)");
+                } catch (SQLException e) {
+                    System.out.println("Ошибка при обновлении таблицы orders: " + e.getMessage());
+                }
+            } else {
+                System.out.println("Столбец total_price не найден в таблице orders, обновление не требуется");
+            }
+            columns.close();
+            
+            // Проверяем, существует ли столбец price в таблице order_items
+            columns = metaData.getColumns(null, null, "order_items", "price");
+            
+            if (columns.next()) {
+                // Столбец price существует, меняем его на price_per_item
+                try (Statement stmt = connection.createStatement()) {
+                    String alterOrderItemsTable = "ALTER TABLE order_items CHANGE COLUMN price price_per_item DECIMAL(10, 2) NOT NULL";
+                    stmt.executeUpdate(alterOrderItemsTable);
+                    System.out.println("Таблица order_items успешно обновлена (price -> price_per_item)");
+                } catch (SQLException e) {
+                    System.out.println("Ошибка при обновлении таблицы order_items: " + e.getMessage());
+                }
+            } else {
+                System.out.println("Столбец price не найден в таблице order_items, обновление не требуется");
+            }
+            columns.close();
+            
+            System.out.println("Обновление структуры базы данных завершено");
+        } catch (Exception e) {
+            System.out.println("Ошибка при обновлении структуры базы данных: " + e.getMessage());
             e.printStackTrace();
         }
     }

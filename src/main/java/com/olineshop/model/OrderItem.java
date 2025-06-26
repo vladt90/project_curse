@@ -72,4 +72,19 @@ public class OrderItem {
     public String toString() {
         return product.getName() + " x " + quantity + " = " + getSubtotal() + " руб.";
     }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        OrderItem other = (OrderItem) obj;
+        // Сравниваем только по ID продукта
+        return product != null && other.product != null && 
+               product.getId() == other.product.getId();
+    }
+    
+    @Override
+    public int hashCode() {
+        return product != null ? product.getId() : 0;
+    }
 } 

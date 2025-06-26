@@ -81,46 +81,7 @@ public class ClientController {
         }
     }
     
-    //поиск товаров по названию
-     //searchTerm строка для поиска
-    public void searchProducts(String searchTerm) {
-        if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            //показ всех товаров
-            loadProducts();
-            return;
-        }
-        
-        // Сбрасываем соединение перед поиском товаров
-        com.olineshop.util.DatabaseManager.resetConnectionStatus();
-        
-        try {
-            products.clear();
-            products.addAll(productDAO.searchProductsByName(searchTerm));
-            view.updateProductTable(products);
-        } catch (Exception e) {
-            System.out.println("Ошибка при поиске товаров: " + e.getMessage());
-            e.printStackTrace();
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось найти товары: " + e.getMessage());
-        }
-    }
-    
-    //фильтр цены
-     //minPrice мин цена
-     //maxPrice мак цена
-    public void filterProductsByPrice(double minPrice, double maxPrice) {
-        // Сбрасываем соединение перед фильтрацией товаров
-        com.olineshop.util.DatabaseManager.resetConnectionStatus();
-        
-        try {
-            products.clear();
-            products.addAll(productDAO.filterProductsByPrice(minPrice, maxPrice));
-            view.updateProductTable(products);
-        } catch (Exception e) {
-            System.out.println("Ошибка при фильтрации товаров: " + e.getMessage());
-            e.printStackTrace();
-            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось отфильтровать товары: " + e.getMessage());
-        }
-    }
+
 
     // для истории заказов
     public void loadOrderHistory() {
@@ -256,31 +217,38 @@ public class ClientController {
             return;
         }
         
-        // есть ли в корзине
-        for (OrderItem item : cartItems) {
-            if (item.getProduct().getId() == product.getId()) {
-                // Товар уже есть
-                int newQuantity = item.getQuantity() + quantity;
-                
-                // хватает ли на складе
-                if (product.getStockQuantity() < newQuantity) {
-                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Недостаточно товара на складе");
-                    return;
-                }
-                
-                item.setQuantity(newQuantity);
-                updateCartView();
+        // Создаем временный объект для поиска
+        OrderItem tempItem = new OrderItem();
+        tempItem.setProduct(product);
+        
+        // Проверяем, есть ли товар уже в корзине
+        int existingItemIndex = cartItems.indexOf(tempItem);
+        
+        if (existingItemIndex != -1) {
+            // Товар уже есть в корзине
+            OrderItem existingItem = cartItems.get(existingItemIndex);
+            int newQuantity = existingItem.getQuantity() + quantity;
+            
+            // Проверяем, хватает ли товара на складе
+            if (product.getStockQuantity() < newQuantity) {
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Недостаточно товара на складе");
                 return;
             }
+            
+            // Обновляем количество
+            existingItem.setQuantity(newQuantity);
+            System.out.println("Обновлено количество товара в корзине: " + product.getName() + ", новое количество: " + newQuantity);
+        } else {
+            // Товара нет в корзине, добавляем новый
+            OrderItem newItem = new OrderItem();
+            newItem.setProduct(product);
+            newItem.setQuantity(quantity);
+            newItem.setPrice(product.getPrice());
+            
+            cartItems.add(newItem);
+            System.out.println("Добавлен новый товар в корзину: " + product.getName() + ", количество: " + quantity);
         }
         
-        // Товара нет в корзине
-        OrderItem newItem = new OrderItem();
-        newItem.setProduct(product);
-        newItem.setQuantity(quantity);
-        newItem.setPrice(product.getPrice());
-        
-        cartItems.add(newItem);
         updateCartView();
     }
 
@@ -849,5 +817,100 @@ public class ClientController {
         // открываем окно входа
         LoginView loginView = new LoginView();
         loginView.start(new Stage());
+    }
+
+    //Показать диалоговое окно для редактирования данных пользователя
+    public void showEditProfileDialog() {
+        Stage dialogStage = new Stage();
+        dialogStage.setTitle("Редактирование личных данных");
+        dialogStage.initModality(Modality.WINDOW_MODAL);
+        dialogStage.initOwner(primaryStage);
+        
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+        
+        // Поля для ввода данных
+        TextField firstNameField = new TextField(currentUser.getFirstName());
+        TextField lastNameField = new TextField(currentUser.getLastName());
+        TextField emailField = new TextField(currentUser.getEmail());
+        TextField phoneField = new TextField(currentUser.getPhone());
+        PasswordField currentPasswordField = new PasswordField();
+        PasswordField newPasswordField = new PasswordField();
+        PasswordField confirmPasswordField = new PasswordField();
+        
+        // Добавление полей в сетку
+        grid.add(new Label("Имя:"), 0, 0);
+        grid.add(firstNameField, 1, 0);
+        grid.add(new Label("Фамилия:"), 0, 1);
+        grid.add(lastNameField, 1, 1);
+        grid.add(new Label("Email:"), 0, 2);
+        grid.add(emailField, 1, 2);
+        grid.add(new Label("Телефон:"), 0, 3);
+        grid.add(phoneField, 1, 3);
+        grid.add(new Label("Текущий пароль:"), 0, 4);
+        grid.add(currentPasswordField, 1, 4);
+        grid.add(new Label("Новый пароль:"), 0, 5);
+        grid.add(newPasswordField, 1, 5);
+        grid.add(new Label("Подтверждение пароля:"), 0, 6);
+        grid.add(confirmPasswordField, 1, 6);
+        
+        // Кнопки
+        Button saveButton = new Button("Сохранить");
+        Button cancelButton = new Button("Отмена");
+        
+        HBox buttonBox = new HBox(10);
+        buttonBox.getChildren().addAll(saveButton, cancelButton);
+        grid.add(buttonBox, 1, 7);
+        
+        // Обработчик кнопки "Сохранить"
+        saveButton.setOnAction(e -> {
+            // Проверка правильности текущего пароля
+            if (!currentUser.getPasswordHash().equals(currentPasswordField.getText())) {
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Неверный текущий пароль");
+                return;
+            }
+            
+            // Проверка совпадения новых паролей
+            if (!newPasswordField.getText().isEmpty() && 
+                !newPasswordField.getText().equals(confirmPasswordField.getText())) {
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Новый пароль и подтверждение не совпадают");
+                return;
+            }
+            
+            // Обновление данных пользователя
+            currentUser.setFirstName(firstNameField.getText());
+            currentUser.setLastName(lastNameField.getText());
+            currentUser.setEmail(emailField.getText());
+            currentUser.setPhone(phoneField.getText());
+            
+            // Если новый пароль указан, обновляем его
+            if (!newPasswordField.getText().isEmpty()) {
+                currentUser.setPasswordHash(newPasswordField.getText());
+            }
+            
+            // Сбрасываем соединение перед сохранением данных пользователя
+            com.olineshop.util.DatabaseManager.resetConnectionStatus();
+            
+            // Сохранение в базе данных
+            boolean success = userDAO.updateUser(currentUser);
+            
+            if (success) {
+                view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Данные успешно обновлены");
+                // Обновляем информацию на верхней панели
+                view.updateUserInfo(currentUser);
+                dialogStage.close();
+            } else {
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось обновить данные");
+            }
+        });
+        
+        // Обработчик кнопки "Отмена"
+        cancelButton.setOnAction(e -> dialogStage.close());
+        
+        Scene scene = new Scene(grid, 450, 300);
+        dialogStage.setScene(scene);
+        dialogStage.show();
     }
 } 

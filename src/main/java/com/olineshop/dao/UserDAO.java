@@ -21,24 +21,46 @@ public class UserDAO {
     //return список пользователей
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
-        String sql = "SELECT * FROM users";
+        String sql = "SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id ORDER BY u.id";
         System.out.println("Получение всех пользователей из базы данных");
 
         // Сбрасываем соединение перед выполнением запроса
         com.olineshop.util.DatabaseManager.resetConnectionStatus();
 
-        try (Connection conn = DatabaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql);
-                ResultSet rs = pstmt.executeQuery()) {
-
+        try (Connection conn = DatabaseManager.getConnection()) {
             if (conn == null) {
                 System.out.println("Ошибка: не удалось получить соединение с базой данных");
                 return users;
             }
 
-            System.out.println("Выполнение SQL-запроса: " + sql);
-            while (rs.next()) {
-                users.add(extractUserFromResultSet(rs));
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setFetchSize(100); // Оптимизация для больших наборов данных
+                
+                System.out.println("Выполнение SQL-запроса: " + sql);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        // Создаем объект Role
+                        Role role = new Role(
+                            rs.getInt("role_id"),
+                            rs.getString("role_name")
+                        );
+                        
+                        // Создаем объект User
+                        User user = new User(
+                            rs.getInt("id"),
+                            rs.getString("login"),
+                            rs.getString("password_hash"),
+                            rs.getString("first_name"),
+                            rs.getString("last_name"),
+                            rs.getString("email"),
+                            rs.getString("phone"),
+                            rs.getDouble("discount"),
+                            role
+                        );
+                        
+                        users.add(user);
+                    }
+                }
             }
             System.out.println("Всего найдено пользователей: " + users.size());
         } catch (SQLException e) {

@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `order_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `delivery_date` DATETIME NULL,
   `status` VARCHAR(20) NOT NULL DEFAULT 'Новый',
-  `total_price` DECIMAL(10, 2) NOT NULL,
+  `total_cost` DECIMAL(10, 2) NOT NULL,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
 );
 
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS `order_items` (
   `order_id` INT NOT NULL,
   `product_id` INT NOT NULL,
   `quantity` INT NOT NULL,
-  `price` DECIMAL(10, 2) NOT NULL,
+  `price_per_item` DECIMAL(10, 2) NOT NULL,
   FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`),
   FOREIGN KEY (`product_id`) REFERENCES `products`(`id`)
 );

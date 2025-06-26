@@ -8,6 +8,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -20,8 +21,11 @@ import com.olineshop.model.Product;
 import com.olineshop.model.User;
 import com.olineshop.view.LoginView;
 import com.olineshop.view.MainAdminView;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -53,30 +57,93 @@ public class AdminController {
     }
 
     public void loadProducts() {
-        // Сбрасываем соединение перед загрузкой товаров
-        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        // Показываем индикатор загрузки
+        view.showLoadingIndicator(true);
         
-        products.clear();
-        products.addAll(productDAO.getAllProducts());
-        view.updateProductTable(products);
+        Task<List<Product>> task = new Task<>() {
+            @Override
+            protected List<Product> call() {
+                // Сбрасываем соединение перед загрузкой товаров
+                com.olineshop.util.DatabaseManager.resetConnectionStatus();
+                return productDAO.getAllProducts();
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            products.clear();
+            products.addAll(task.getValue());
+            view.updateProductTable(products);
+            view.showLoadingIndicator(false);
+        });
+        
+        task.setOnFailed(event -> {
+            System.out.println("Ошибка при загрузке товаров: " + task.getException().getMessage());
+            task.getException().printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось загрузить товары");
+            view.showLoadingIndicator(false);
+        });
+        
+        new Thread(task).start();
     }
 
     public void loadUsers() {
-        // Сбрасываем соединение перед загрузкой пользователей
-        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        // Показываем индикатор загрузки
+        view.showLoadingIndicator(true);
         
-        users.clear();
-        users.addAll(userDAO.getAllUsers());
-        view.updateUserTable(users);
+        Task<List<User>> task = new Task<>() {
+            @Override
+            protected List<User> call() {
+                // Сбрасываем соединение перед загрузкой пользователей
+                com.olineshop.util.DatabaseManager.resetConnectionStatus();
+                return userDAO.getAllUsers();
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            users.clear();
+            users.addAll(task.getValue());
+            view.updateUserTable(users);
+            view.showLoadingIndicator(false);
+        });
+        
+        task.setOnFailed(event -> {
+            System.out.println("Ошибка при загрузке пользователей: " + task.getException().getMessage());
+            task.getException().printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось загрузить пользователей");
+            view.showLoadingIndicator(false);
+        });
+        
+        new Thread(task).start();
     }
 
     public void loadOrders() {
-        // Сбрасываем соединение перед загрузкой заказов
-        com.olineshop.util.DatabaseManager.resetConnectionStatus();
+        // Показываем индикатор загрузки
+        view.showLoadingIndicator(true);
         
-        orders.clear();
-        orders.addAll(orderDAO.getAllOrders());
-        view.updateOrderTable(orders);
+        Task<List<Order>> task = new Task<>() {
+            @Override
+            protected List<Order> call() {
+                // Сбрасываем соединение перед загрузкой заказов
+                com.olineshop.util.DatabaseManager.resetConnectionStatus();
+                return orderDAO.getAllOrders();
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            orders.clear();
+            orders.addAll(task.getValue());
+            view.updateOrderTable(orders);
+            view.showLoadingIndicator(false);
+        });
+        
+        task.setOnFailed(event -> {
+            System.out.println("Ошибка при загрузке заказов: " + task.getException().getMessage());
+            task.getException().printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось загрузить заказы");
+            view.showLoadingIndicator(false);
+        });
+        
+        new Thread(task).start();
     }
 
     public void deleteProduct(int id) {
@@ -88,21 +155,39 @@ public class AdminController {
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            // Сбрасываем соединение перед удалением
-            com.olineshop.util.DatabaseManager.resetConnectionStatus();
+            // Показываем индикатор загрузки
+            view.showLoadingIndicator(true);
             
-            boolean success = productDAO.deleteProduct(id);
+            // Выполняем удаление товара в отдельном потоке
+            Task<Boolean> deleteTask = new Task<>() {
+                @Override
+                protected Boolean call() {
+                    // Сбрасываем соединение перед удалением
+                    com.olineshop.util.DatabaseManager.resetConnectionStatus();
+                    return productDAO.deleteProduct(id);
+                }
+            };
             
-            if (success) {
-                view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Товар успешно удален");
-                // Перезагружаем список товаров после удаления
-                loadProducts();
-            } else {
-                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось удалить товар");
-                // восстановить соединение и перезагрузить список товаров
-                com.olineshop.util.DatabaseManager.resetConnectionStatus();
-                loadProducts();
-            }
+            deleteTask.setOnSucceeded(event -> {
+                boolean success = deleteTask.getValue();
+                if (success) {
+                    view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Товар успешно удален");
+                    // Перезагружаем список товаров после удаления
+                    loadProducts();
+                } else {
+                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось удалить товар");
+                    view.showLoadingIndicator(false);
+                }
+            });
+            
+            deleteTask.setOnFailed(event -> {
+                System.out.println("Ошибка при удалении товара: " + deleteTask.getException().getMessage());
+                deleteTask.getException().printStackTrace();
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Произошла ошибка при удалении товара");
+                view.showLoadingIndicator(false);
+            });
+            
+            new Thread(deleteTask).start();
         }
     }
 
@@ -244,6 +329,44 @@ public class AdminController {
     }
 
     public void showOrderDetails(Order order) {
+        System.out.println("Показ деталей заказа ID=" + order.getId());
+        
+        // Показываем индикатор загрузки
+        view.showLoadingIndicator(true);
+        
+        // Сначала загружаем актуальные данные заказа с товарами
+        Task<Order> loadOrderTask = new Task<>() {
+            @Override
+            protected Order call() {
+                // Загружаем заказ с товарами
+                return orderDAO.getOrderById(order.getId());
+            }
+        };
+        
+        loadOrderTask.setOnSucceeded(event -> {
+            Order loadedOrder = loadOrderTask.getValue();
+            if (loadedOrder != null) {
+                // Показываем окно с деталями заказа
+                showOrderDetailsWindow(loadedOrder);
+            } else {
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось загрузить данные заказа");
+            }
+            view.showLoadingIndicator(false);
+        });
+        
+        loadOrderTask.setOnFailed(event -> {
+            System.out.println("Ошибка при загрузке заказа: " + loadOrderTask.getException().getMessage());
+            loadOrderTask.getException().printStackTrace();
+            view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Произошла ошибка при загрузке данных заказа");
+            view.showLoadingIndicator(false);
+        });
+        
+        new Thread(loadOrderTask).start();
+    }
+    
+    // Вспомогательный метод для отображения окна с деталями заказа
+    private void showOrderDetailsWindow(Order order) {
+        // Создаем и показываем окно с деталями заказа
         Stage detailsStage = new Stage();
         detailsStage.setTitle("Подробности заказа №" + order.getId());
         detailsStage.initModality(Modality.WINDOW_MODAL);
@@ -270,10 +393,10 @@ public class AdminController {
         infoGrid.add(new Label(order.getUser().getPhone() != null ? order.getUser().getPhone() : "Не указан"), 1, 3);
         
         infoGrid.add(new Label("Дата заказа:"), 0, 4);
-        infoGrid.add(new Label(order.getOrderDate().toString()), 1, 4);
+        infoGrid.add(new Label(order.getOrderDate().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))), 1, 4);
         
         infoGrid.add(new Label("Дата доставки:"), 0, 5);
-        infoGrid.add(new Label(order.getDeliveryDate() != null ? order.getDeliveryDate().toString() : "Не указана"), 1, 5);
+        infoGrid.add(new Label(order.getDeliveryDate() != null ? order.getDeliveryDate().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "Не указана"), 1, 5);
         
         infoGrid.add(new Label("Статус:"), 0, 6);
         infoGrid.add(new Label(order.getStatus()), 1, 6);
@@ -306,7 +429,15 @@ public class AdminController {
         
         itemsTable.getColumns().addAll(nameColumn, priceColumn, quantityColumn, subtotalColumn);
         
-        itemsTable.setItems(FXCollections.observableArrayList(order.getItems()));
+        // Проверяем, загружены ли товары заказа
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            // Если товары уже загружены, показываем их
+            itemsTable.setItems(FXCollections.observableArrayList(order.getItems()));
+            System.out.println("Отображение " + order.getItems().size() + " товаров в заказе #" + order.getId());
+        } else {
+            System.out.println("Список товаров в заказе #" + order.getId() + " пуст или null");
+            itemsTable.setItems(FXCollections.observableArrayList());
+        }
         
         HBox buttonBox = new HBox(10);
         
@@ -394,7 +525,7 @@ public class AdminController {
         vbox.setPadding(new Insets(10, 10, 10, 10));
         
         Label currentDateLabel = new Label("Текущая дата доставки: " + 
-                (order.getDeliveryDate() != null ? order.getDeliveryDate().toString() : "Не указана"));
+                (order.getDeliveryDate() != null ? order.getDeliveryDate().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "Не указана"));
         
         Label newDateLabel = new Label("Новая дата доставки (ГГГГ-ММ-ДД):");
         
@@ -455,19 +586,44 @@ public class AdminController {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Подтверждение удаления");
         alert.setHeaderText(null);
-        alert.setContentText("Вы действительно хотите удалить заказ №" + id + "?");
+        alert.setContentText("Вы действительно хотите удалить заказ?");
         
         Optional<ButtonType> result = alert.showAndWait();
         
         if (result.isPresent() && result.get() == ButtonType.OK) {
-            boolean success = orderDAO.deleteOrder(id);
+            // Показываем индикатор загрузки
+            view.showLoadingIndicator(true);
             
-            if (success) {
-                view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Заказ успешно удален");
-                loadOrders();
-            } else {
-                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось удалить заказ");
-            }
+            // Выполняем удаление заказа в отдельном потоке
+            Task<Boolean> deleteTask = new Task<>() {
+                @Override
+                protected Boolean call() {
+                    // Сбрасываем соединение перед удалением
+                    com.olineshop.util.DatabaseManager.resetConnectionStatus();
+                    return orderDAO.deleteOrder(id);
+                }
+            };
+            
+            deleteTask.setOnSucceeded(event -> {
+                boolean success = deleteTask.getValue();
+                if (success) {
+                    view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Заказ успешно удален");
+                    // Перезагружаем список заказов после удаления
+                    loadOrders();
+                } else {
+                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось удалить заказ");
+                    view.showLoadingIndicator(false);
+                }
+            });
+            
+            deleteTask.setOnFailed(event -> {
+                System.out.println("Ошибка при удалении заказа: " + deleteTask.getException().getMessage());
+                deleteTask.getException().printStackTrace();
+                view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Произошла ошибка при удалении заказа");
+                view.showLoadingIndicator(false);
+            });
+            
+            new Thread(deleteTask).start();
         }
     }
 
@@ -481,41 +637,5 @@ public class AdminController {
         loginView.start(new Stage());
     }
 
-    // Метод для удаления всех товаров
-    public void deleteAllProducts() {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Подтверждение удаления");
-        alert.setHeaderText("Удаление всех товаров");
-        alert.setContentText("Вы действительно хотите удалить ВСЕ товары из базы данных? Это действие нельзя отменить!");
-        
-        Optional<ButtonType> result = alert.showAndWait();
-        
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            // Дополнительное подтверждение
-            Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-            confirmAlert.setTitle("Подтверждение удаления");
-            confirmAlert.setHeaderText("ВНИМАНИЕ!");
-            confirmAlert.setContentText("Это приведет к удалению ВСЕХ товаров без возможности восстановления. Вы уверены?");
-            
-            Optional<ButtonType> confirmResult = confirmAlert.showAndWait();
-            
-            if (confirmResult.isPresent() && confirmResult.get() == ButtonType.OK) {
-                // Сбрасываем соединение перед удалением
-                com.olineshop.util.DatabaseManager.resetConnectionStatus();
-                
-                boolean success = productDAO.deleteAllProducts();
-                
-                if (success) {
-                    view.showAlert(Alert.AlertType.INFORMATION, "Успех", "Все товары успешно удалены");
-                    // Перезагружаем список товаров после удаления
-                    loadProducts();
-                } else {
-                    view.showAlert(Alert.AlertType.ERROR, "Ошибка", "Не удалось удалить все товары");
-                    // Восстанавливаем соединение и перезагружаем список товаров
-                    com.olineshop.util.DatabaseManager.resetConnectionStatus();
-                    loadProducts();
-                }
-            }
-        }
-    }
+
 } 

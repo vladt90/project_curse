@@ -89,10 +89,13 @@ public class MainClientView {
         Label discountLabel = new Label("Ваша скидка: " + (currentUser.getDiscount() * 100) + "%");
         discountLabel.setFont(Font.font("Tahoma", FontWeight.NORMAL, 14));
         
+        Button editProfileButton = new Button("Изменить данные");
+        editProfileButton.setOnAction(e -> controller.showEditProfileDialog());
+        
         Button logoutButton = new Button("Выйти");
         logoutButton.setOnAction(e -> controller.handleLogout());
         
-        topPanel.getChildren().addAll(userLabel, discountLabel, logoutButton);
+        topPanel.getChildren().addAll(userLabel, discountLabel, editProfileButton, logoutButton);
         
         return topPanel;
     }
@@ -105,53 +108,6 @@ public class MainClientView {
         
         Text title = new Text("Доступные товары");
         title.setFont(Font.font("Tahoma", FontWeight.NORMAL, 16));
-        
-        HBox searchPanel = new HBox(10);
-        searchPanel.setPadding(new Insets(0, 0, 10, 0));
-        
-        Label searchLabel = new Label("Поиск:");
-        TextField searchField = new TextField();
-        searchField.setPrefWidth(200);
-        Button searchButton = new Button("Найти");
-        searchButton.setOnAction(e -> controller.searchProducts(searchField.getText()));
-        
-        Label priceLabel = new Label("Цена от:");
-        TextField minPriceField = new TextField();
-        minPriceField.setPrefWidth(80);
-        Label toLabel = new Label("до:");
-        TextField maxPriceField = new TextField();
-        maxPriceField.setPrefWidth(80);
-        Button filterButton = new Button("Применить");
-        filterButton.setOnAction(e -> {
-            try {
-                double minPrice = minPriceField.getText().isEmpty() ? 0 : Double.parseDouble(minPriceField.getText());
-                double maxPrice = maxPriceField.getText().isEmpty() ? Double.MAX_VALUE : Double.parseDouble(maxPriceField.getText());
-                
-                if (minPrice < 0 || maxPrice < 0) {
-                    showAlert(Alert.AlertType.ERROR, "Ошибка", "Цена не может быть отрицательной");
-                    return;
-                }
-                
-                if (minPrice > maxPrice) {
-                    showAlert(Alert.AlertType.ERROR, "Ошибка", "Минимальная цена не может быть больше максимальной");
-                    return;
-                }
-                
-                controller.filterProductsByPrice(minPrice, maxPrice);
-            } catch (NumberFormatException ex) {
-                showAlert(Alert.AlertType.ERROR, "Ошибка", "Некорректный формат числа");
-            }
-        });
-        
-        Button resetButton = new Button("Сбросить");
-        resetButton.setOnAction(e -> {
-            searchField.clear();
-            minPriceField.clear();
-            maxPriceField.clear();
-            controller.loadProducts();
-        });
-        
-        searchPanel.getChildren().addAll(searchLabel, searchField, searchButton, priceLabel, minPriceField, toLabel, maxPriceField, filterButton, resetButton);
         
         productTable = new TableView<>();
         
@@ -192,7 +148,7 @@ public class MainClientView {
         
         buttonPanel.getChildren().addAll(quantityLabel, quantitySpinner, addToCartButton);
         
-        vbox.getChildren().addAll(title, searchPanel, productTable, buttonPanel);
+        vbox.getChildren().addAll(title, productTable, buttonPanel);
         
         return vbox;
     }
@@ -408,5 +364,16 @@ public class MainClientView {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    //Обновить информацию о пользователе в интерфейсе
+    public void updateUserInfo(User user) {
+        // Обновляем currentUser
+        this.currentUser = user;
+        
+        // Перестраиваем верхнюю панель с обновленной информацией
+        BorderPane borderPane = (BorderPane) ((Scene) productTable.getScene()).getRoot();
+        HBox topPanel = createTopPanel();
+        borderPane.setTop(topPanel);
     }
 } 

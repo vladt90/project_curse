@@ -113,6 +113,6 @@ public class Order {
 
     @Override
     public String toString() {
-        return "Заказ #" + id + " от " + orderDate + " (" + status + ")";
+        return "Заказ #" + id + " от " + orderDate.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) + " (" + status + ")";
     }
 } 
